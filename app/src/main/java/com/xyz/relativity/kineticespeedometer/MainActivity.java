@@ -32,27 +32,6 @@ import java.util.TimerTask;
 public class MainActivity extends AppCompatActivity implements ILocationListener {
     private LocationManager locationManager;
 
-    enum LineGraphs {
-        SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f),
-        ENERGY("Kinetic Energy per 1kg (joules)", Color.rgb(255, 0, 0), 2f),
-        ACCELERATION("Acceleration (m/s/s)", Color.rgb(140, 140, 140), 0.5f, YAxis.AxisDependency.RIGHT);
-
-        public String label;
-        public int color;
-        public float lineSize;
-        public YAxis.AxisDependency dependency;
-
-        LineGraphs(String label, int color, float lineSize) {
-            this(label, color, lineSize, YAxis.AxisDependency.LEFT);
-        }
-
-        LineGraphs(String label, int color, float lineSize, YAxis.AxisDependency dependency) {
-            this.label = label;
-            this.color = color;
-            this.lineSize = lineSize;
-            this.dependency = dependency;
-        }
-    }
     private static final float MASS_KG = 1;
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
@@ -69,6 +48,24 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     float speedStep = 0;
     float currentSpeed = targetSpeed;
     long startTime = System.currentTimeMillis();
+
+    enum LineGraphs {
+        SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
+        ENERGY("Kinetic Energy per 1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT),
+        ACCELERATION("Acceleration (m/s/s)", Color.rgb(140, 140, 255), 0.5f, YAxis.AxisDependency.LEFT);
+
+        public String label;
+        public int color;
+        public float lineSize;
+        public YAxis.AxisDependency dependency;
+
+        LineGraphs(String label, int color, float lineSize, YAxis.AxisDependency dependency) {
+            this.label = label;
+            this.color = color;
+            this.lineSize = lineSize;
+            this.dependency = dependency;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart.setVisibleXRangeMinimum(50);
 
         // if disabled, scaling can be done on x- and y-axis separately
-        chart.setPinchZoom(false);
+//        chart.setPinchZoom(false);
 
         Legend legend = chart.getLegend();
         legend.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
@@ -158,8 +155,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             targetSpeed = location.getSpeed();
             speedStep = (targetSpeed - currentSpeed) / 10;
         }
-
-        System.out.println(targetSpeed);
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
@@ -189,11 +184,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     }
 
     private void configureAxis(LineChart chart) {
-        chart.getAxisRight().setGridColor(LineGraphs.ACCELERATION.color);
-        chart.getAxisRight().setGridColor(LineGraphs.ACCELERATION.color);
-        chart.getAxisRight().setTextColor(LineGraphs.ACCELERATION.color);
-
-        chart.getAxisRight().setAxisLineColor(LineGraphs.ACCELERATION.color);
+        if (LineGraphs.ACCELERATION.dependency == YAxis.AxisDependency.RIGHT) {
+            chart.getAxisRight().setGridColor(LineGraphs.ACCELERATION.color);
+            chart.getAxisRight().setTextColor(LineGraphs.ACCELERATION.color);
+            chart.getAxisRight().setAxisLineColor(LineGraphs.ACCELERATION.color);
+        } else {
+            chart.getAxisLeft().setGridColor(LineGraphs.ACCELERATION.color);
+            chart.getAxisLeft().setTextColor(LineGraphs.ACCELERATION.color);
+            chart.getAxisLeft().setAxisLineColor(LineGraphs.ACCELERATION.color);
+        }
 
         XAxis xAxis = chart.getXAxis();
         xAxis.setLabelRotationAngle(20f);
@@ -211,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         for (LineGraphs graph: LineGraphs.values()) {
             LineDataSet speedDataSet = new LineDataSet(null, graph.label);
-            speedDataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
+            speedDataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
             speedDataSet.setLineWidth(graph.lineSize);
             speedDataSet.setDrawCircles(false);
             speedDataSet.setColor(graph.color);

@@ -65,7 +65,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     float prevSpeed = 0;
     float prevTime = 0;
-    float speedKph = 0;
+    float targetSpeed = 0;
+    float speedStep = 0;
+    float currentSpeed = targetSpeed;
     long startTime = System.currentTimeMillis();
 
     @Override
@@ -83,7 +85,38 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         locationManager = new LocationManager(this, 100);
         locationManager.addListener(this);
 
+        initChart();
 
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                float time = (System.currentTimeMillis() - startTime);
+                if (time < 0) {
+                    startTime = System.currentTimeMillis();
+                    time = 0;
+                    prevTime = 0;
+                }
+
+                if (Math.floor(currentSpeed) != Math.floor(targetSpeed)) {
+                    currentSpeed = currentSpeed + speedStep;
+                } else {
+                    speedStep = 0;
+                }
+
+                float dt = time-prevTime;
+                Float acceleration = null;
+                if (dt != 0) {
+                    acceleration = ((currentSpeed - prevSpeed) / (time - prevTime)) * G_UNIT_CONVERSION;
+                }
+
+                updateUi(time, currentSpeed * 3.6f, (ONE_HALF_MASS_KG * currentSpeed * currentSpeed), acceleration);
+                prevTime = time;
+                prevSpeed = currentSpeed;
+            }
+        }, 0, 100);
+    }
+
+    private void initChart() {
         chart = findViewById(R.id.chart);
 
         chart.setAutoScaleMinMaxEnabled(true);
@@ -117,34 +150,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         chart.setData(buildLineData());
         chart.invalidate(); // refresh
-
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                float time = (System.currentTimeMillis() - startTime);
-                if (time < 0) {
-                    startTime = System.currentTimeMillis();
-                    time = 0;
-                }
-
-                float dt = time-prevTime;
-                Float acceleration = null;
-                if (dt != 0) {
-                    acceleration = ((speedKph - prevSpeed) / (time - prevTime)) * G_UNIT_CONVERSION;
-                }
-
-                updateUi(time, speedKph * 3.6f, (ONE_HALF_MASS_KG * speedKph * speedKph), acceleration);
-            }
-        }, 0, 1000);
     }
 
     @Override
     public void updatePosition(Location location) {
         if (location.hasSpeed()) {
-            speedKph = location.getSpeed() * 3.6f;
+            targetSpeed = location.getSpeed();
+            speedStep = (targetSpeed - currentSpeed) / 10;
         }
 
-        System.out.println(speedKph);
+        System.out.println(targetSpeed);
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {

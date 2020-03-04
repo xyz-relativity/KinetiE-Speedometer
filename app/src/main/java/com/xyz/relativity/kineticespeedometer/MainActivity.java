@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import de.nitri.gauge.Gauge;
+
 public class MainActivity extends AppCompatActivity implements ILocationListener {
     private LocationManager locationManager;
 
@@ -192,6 +194,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 ((TextView)MainActivity.this.findViewById(R.id.Speedometer)).setText(String.valueOf(speed));
                 ((TextView)MainActivity.this.findViewById(R.id.Energy)).setText(String.valueOf(energy));
                 ((TextView)MainActivity.this.findViewById(R.id.Acceleration)).setText(String.valueOf(acceleration));
+
+                ((Gauge)MainActivity.this.findViewById(R.id.gauge)).moveToValue(energy);
+                ((Gauge)MainActivity.this.findViewById(R.id.gauge)).setLowerText(String.valueOf(speed));
 
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();

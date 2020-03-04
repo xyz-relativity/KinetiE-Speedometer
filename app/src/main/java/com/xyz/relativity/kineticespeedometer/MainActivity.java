@@ -4,11 +4,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -37,7 +43,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
 
 
-    private static final int MAX_SAMPLES = 100;
+    private static final int MAX_SAMPLES = 500;
 
     private LineChart chart;
     Timer timer = new Timer();
@@ -51,8 +57,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     enum LineGraphs {
         SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
-        ENERGY("Kinetic Energy per 1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT),
-        ACCELERATION("Acceleration (m/s/s)", Color.rgb(140, 140, 255), 0.5f, YAxis.AxisDependency.LEFT);
+        ENERGY("Kinetic Energy/1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT),
+        ACCELERATION("Acceleration (g)", Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT);
 
         public String label;
         public int color;
@@ -70,6 +76,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -98,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     currentSpeed = currentSpeed + speedStep;
                 } else {
                     speedStep = 0;
+                    currentSpeed = targetSpeed;
                 }
 
                 float dt = time-prevTime;
@@ -138,15 +148,25 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 //        chart.setPinchZoom(false);
 
         Legend legend = chart.getLegend();
-        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
+        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
         legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.LEFT);
-        legend.setOrientation(Legend.LegendOrientation.VERTICAL);
-        legend.setDrawInside(true);
-        legend.setXOffset(30);
-
+        legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
+        legend.setDrawInside(false);
+        legend.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 
         chart.setData(buildLineData());
         chart.invalidate(); // refresh
+    }
+
+    private int getThemeColor(Context context, int colorAttr) {
+        TypedValue typedValue = new TypedValue();
+
+        TypedArray a = context.obtainStyledAttributes(typedValue.data, new int[] { colorAttr });
+        int color = a.getColor(0, 0);
+
+        a.recycle();
+
+        return color;
     }
 
     @Override
@@ -159,7 +179,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
         final LineData data = chart.getData();
-
         data.addEntry(new Entry(time, speed), LineGraphs.SPEED.ordinal());
         data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
 
@@ -170,6 +189,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                ((TextView)MainActivity.this.findViewById(R.id.Speedometer)).setText(String.valueOf(speed));
+                ((TextView)MainActivity.this.findViewById(R.id.Energy)).setText(String.valueOf(energy));
+                ((TextView)MainActivity.this.findViewById(R.id.Acceleration)).setText(String.valueOf(acceleration));
+
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();
                 chart.invalidate();
@@ -188,14 +211,25 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             chart.getAxisRight().setGridColor(LineGraphs.ACCELERATION.color);
             chart.getAxisRight().setTextColor(LineGraphs.ACCELERATION.color);
             chart.getAxisRight().setAxisLineColor(LineGraphs.ACCELERATION.color);
+
+            chart.getAxisLeft().setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+            chart.getAxisLeft().setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+            chart.getAxisLeft().setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+
         } else {
             chart.getAxisLeft().setGridColor(LineGraphs.ACCELERATION.color);
             chart.getAxisLeft().setTextColor(LineGraphs.ACCELERATION.color);
             chart.getAxisLeft().setAxisLineColor(LineGraphs.ACCELERATION.color);
+
+            chart.getAxisRight().setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+            chart.getAxisRight().setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+            chart.getAxisRight().setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
         }
 
         XAxis xAxis = chart.getXAxis();
         xAxis.setLabelRotationAngle(20f);
+        xAxis.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+        xAxis.setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
         xAxis.setValueFormatter(new ValueFormatter() {
             SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
             @Override
@@ -209,13 +243,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         List<ILineDataSet> dataSets = new ArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
-            LineDataSet speedDataSet = new LineDataSet(null, graph.label);
-            speedDataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-            speedDataSet.setLineWidth(graph.lineSize);
-            speedDataSet.setDrawCircles(false);
-            speedDataSet.setColor(graph.color);
-            speedDataSet.setAxisDependency(graph.dependency);
-            dataSets.add(speedDataSet);
+            LineDataSet dataSet = new LineDataSet(null, graph.label);
+            dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
+            dataSet.setLineWidth(graph.lineSize);
+            dataSet.setDrawCircles(false);
+            dataSet.setColor(graph.color);
+            dataSet.setAxisDependency(graph.dependency);
+            dataSets.add(dataSet);
         }
 
         return new LineData(dataSets);

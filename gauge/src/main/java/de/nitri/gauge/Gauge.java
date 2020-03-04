@@ -264,14 +264,14 @@ public class Gauge extends View {
 
         canvas.save();
         for (int i = 0; i < totalNicks; ++i) {
-            float y1 = scaleRect.top;
-            float y2 = y1 + (0.020f * canvasHeight);
-            float y3 = y1 + (0.060f * canvasHeight);
-            float y4 = y1 + (0.030f * canvasHeight);
-
             float value = nickToValue(i);
 
             if (value >= minValue && value <= maxValue) {
+                float y1 = scaleRect.top;
+                float y2 = y1 + (0.020f * canvasHeight);
+                float y3 = y1 + (0.060f * canvasHeight);
+                float y4 = y1 + (0.030f * canvasHeight);
+
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
                 if (i % majorNickInterval == 0) {

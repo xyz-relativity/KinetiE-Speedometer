@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -56,6 +57,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     float speedStep = 0;
     float currentSpeed = targetSpeed;
     long startTime = System.currentTimeMillis();
+    private TextView speedLabel;
+    private TextView energyLabel;
+    private TextView accelerationLabel;
+    private Gauge gaugeView;
 
     enum LineGraphs {
         SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
@@ -94,6 +99,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         locationManager.addListener(this);
 
         initChart();
+        initGauge();
 
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -160,6 +166,20 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart.invalidate(); // refresh
     }
 
+    private void initGauge() {
+        speedLabel = findViewById(R.id.Speedometer);
+        energyLabel = findViewById(R.id.Energy);
+        accelerationLabel = findViewById(R.id.Acceleration);
+        
+        gaugeView = findViewById(R.id.gauge);
+
+        gaugeView.setMinValue(0);
+        gaugeView.setMaxValue(1000);
+        gaugeView.setTotalNicks(120);
+        gaugeView.setMajorNickInterval(10);
+        gaugeView.setValuePerNick(10);
+    }
+
     private int getThemeColor(Context context, int colorAttr) {
         TypedValue typedValue = new TypedValue();
 
@@ -191,12 +211,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ((TextView)MainActivity.this.findViewById(R.id.Speedometer)).setText(String.valueOf(speed));
-                ((TextView)MainActivity.this.findViewById(R.id.Energy)).setText(String.valueOf(energy));
-                ((TextView)MainActivity.this.findViewById(R.id.Acceleration)).setText(String.valueOf(acceleration));
+                speedLabel.setText(String.valueOf(Math.abs(speed)));
+                energyLabel.setText(String.valueOf(energy));
+                accelerationLabel.setText(String.valueOf(acceleration));
 
-                ((Gauge)MainActivity.this.findViewById(R.id.gauge)).moveToValue(energy);
-                ((Gauge)MainActivity.this.findViewById(R.id.gauge)).setLowerText(String.valueOf(speed));
+                gaugeView.moveToValue(energy);
+                gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
 
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();

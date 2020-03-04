@@ -21,7 +21,6 @@
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             gauge:faceColor="#55ffffff"
@@ -29,11 +28,7 @@
             gauge:scaleColor="#ff00ff00"
             gauge:labelTextSize="42"
             gauge:lowerText="test"
-            gauge:maxValue="1000"
-            gauge:minValue="0"
-            gauge:totalNicks="120"
             gauge:upperText="Km/h"
-            gauge:valuePerNick="10"
             />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

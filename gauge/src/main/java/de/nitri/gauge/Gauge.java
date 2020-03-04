@@ -77,6 +77,7 @@ public class Gauge extends View {
     private long lastMoveTime;
     private boolean needleShadow = true;
     private int faceColor;
+    private int rimColor;
     private int scaleColor;
     private int needleColor;
     private Paint upperTextPaint;
@@ -124,6 +125,7 @@ public class Gauge extends View {
         initialValue = a.getFloat(R.styleable.Gauge_initialValue, initialValue);
         requestedLabelTextSize = a.getFloat(R.styleable.Gauge_labelTextSize, requestedLabelTextSize);
         faceColor = a.getColor(R.styleable.Gauge_faceColor, Color.argb(0xff, 0xff, 0xff, 0xff));
+        rimColor = a.getColor(R.styleable.Gauge_rimColor, Color.argb(0x4f, 0x33, 0x36, 0x33));
         scaleColor = a.getColor(R.styleable.Gauge_scaleColor, 0x9f004d0f);
         needleColor = a.getColor(R.styleable.Gauge_needleColor, Color.RED);
         needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
@@ -160,12 +162,13 @@ public class Gauge extends View {
         // http://mindtherobot.com/blog/272/android-custom-ui-making-a-vintage-thermometer/
 
         rimPaint = new Paint();
-        rimPaint.setFlags(Paint.ANTI_ALIAS_FLAG);
+        rimPaint.setAntiAlias(true);
+        rimPaint.setColor(rimColor);
 
         rimCirclePaint = new Paint();
         rimCirclePaint.setAntiAlias(true);
         rimCirclePaint.setStyle(Paint.Style.STROKE);
-        rimCirclePaint.setColor(Color.argb(0x4f, 0x33, 0x36, 0x33));
+        rimCirclePaint.setColor(rimColor);
         rimCirclePaint.setStrokeWidth(0.005f);
 
         facePaint = new Paint();

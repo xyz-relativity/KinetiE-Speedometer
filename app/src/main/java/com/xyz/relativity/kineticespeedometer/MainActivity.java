@@ -57,15 +57,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     float speedStep = 0;
     float currentSpeed = targetSpeed;
     long startTime = System.currentTimeMillis();
-    private TextView speedLabel;
-    private TextView energyLabel;
-    private TextView accelerationLabel;
     private Gauge gaugeView;
 
     enum LineGraphs {
+        ACCELERATION("Acceleration (g)", Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
         SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
-        ENERGY("Kinetic Energy/1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT),
-        ACCELERATION("Acceleration (g)", Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT);
+        ENERGY("Kinetic Energy/1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT);
 
         public String label;
         public int color;
@@ -167,16 +164,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     }
 
     private void initGauge() {
-        speedLabel = findViewById(R.id.Speedometer);
-        energyLabel = findViewById(R.id.Energy);
-        accelerationLabel = findViewById(R.id.Acceleration);
-        
         gaugeView = findViewById(R.id.gauge);
 
         gaugeView.setMinValue(0);
         gaugeView.setMaxValue(1000);
         gaugeView.setTotalNicks(300);
         gaugeView.setMajorNickInterval(25);
+        gaugeView.setStartAngle(90);
     }
 
     private int getThemeColor(Context context, int colorAttr) {
@@ -210,10 +204,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                speedLabel.setText(String.valueOf(Math.abs(speed)));
-                energyLabel.setText(String.valueOf(energy));
-                accelerationLabel.setText(String.valueOf(acceleration));
-
                 gaugeView.moveToValue(energy);
                 gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
 
@@ -282,11 +272,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     @Override
     protected void onResume() {
         super.onResume();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         locationManager.onResume();
     }
 
     @Override
     protected void onPause() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         locationManager.onPause();
         super.onPause();
     }

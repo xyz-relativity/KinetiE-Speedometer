@@ -52,8 +52,7 @@ public class Gauge extends View {
     private int totalNicks = 120;
     private float startAngle = 10;
     private float endAngle = 350;
-    private float availableAngle = endAngle - startAngle;
-    private float degreesPerNick = availableAngle / totalNicks;
+    private float degreesPerNick = (endAngle - startAngle) / totalNicks;
     private float valuePerNick = 10;
     private float minValue = 0;
     private float maxValue = 1000;
@@ -119,9 +118,8 @@ public class Gauge extends View {
     private void applyAttrs(Context context, AttributeSet attrs) {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.Gauge, 0, 0);
         totalNicks = a.getInt(R.styleable.Gauge_totalNicks, totalNicks);
-        degreesPerNick = availableAngle / totalNicks;
-        startAngle = a.getFloat(R.styleable.Gauge_startAngle, valuePerNick);
-        endAngle = a.getFloat(R.styleable.Gauge_endAngle, valuePerNick);
+        startAngle = a.getFloat(R.styleable.Gauge_startAngle, startAngle);
+        endAngle = a.getFloat(R.styleable.Gauge_endAngle, endAngle);
         majorNickInterval = a.getInt(R.styleable.Gauge_majorNickInterval, majorNickInterval);
         minValue = a.getFloat(R.styleable.Gauge_minValue, minValue);
         maxValue = a.getFloat(R.styleable.Gauge_maxValue, maxValue);
@@ -145,7 +143,8 @@ public class Gauge extends View {
     }
 
     private void initValues() {
-        degreesPerNick = availableAngle / totalNicks;
+        degreesPerNick = (endAngle - startAngle) / totalNicks;
+        valuePerNick = (maxValue - minValue) / totalNicks;
         needleStep = needleStepFactor * valuePerDegree();
         centerValue = (minValue + maxValue) / 2;
         needleValue = value = initialValue;
@@ -304,22 +303,20 @@ public class Gauge extends View {
     }
 
     private void drawLabels(Canvas canvas) {
-        for (int i = 0; i < totalNicks; i += majorNickInterval) {
-            float value = nickToValue(i);
-            if (value >= minValue && value <= maxValue) {
-                float scaleAngle = i * degreesPerNick;
-                float scaleAngleRads = (float) Math.toRadians(scaleAngle);
-                //Log.d(TAG, "i = " + i + ", angle = " + scaleAngle + ", value = " + value);
-                float deltaX = labelRadius * (float) Math.sin(scaleAngleRads);
-                float deltaY = labelRadius * (float) Math.cos(scaleAngleRads);
-                String valueLabel;
-                if (intScale) {
-                    valueLabel = String.valueOf((int) value);
-                } else {
-                    valueLabel = String.valueOf(value);
-                }
-                drawTextCentered(valueLabel, canvasCenterX + deltaX, canvasCenterY - deltaY, labelPaint, canvas);
+        for (int i = 0; i <= totalNicks; i += majorNickInterval) {
+            float value = i * valuePerNick;
+            float scaleAngle = (i * degreesPerNick) + 180 + startAngle;
+            float scaleAngleRads = (float) Math.toRadians(scaleAngle);
+            //Log.d(TAG, "i = " + i + ", angle = " + scaleAngle + ", value = " + value);
+            float deltaX = labelRadius * (float) Math.sin(scaleAngleRads);
+            float deltaY = labelRadius * (float) Math.cos(scaleAngleRads);
+            String valueLabel;
+            if (intScale) {
+                valueLabel = String.valueOf((int) value);
+            } else {
+                valueLabel = String.valueOf(value);
             }
+            drawTextCentered(valueLabel, canvasCenterX + deltaX, canvasCenterY - deltaY, labelPaint, canvas);
         }
     }
 
@@ -618,6 +615,30 @@ public class Gauge extends View {
      */
     public void setMaxValue(float value) {
         maxValue = value;
+        initValues();
+        validate();
+        invalidate();
+    }
+
+    /**
+     * Set the starting angle for the values. The origin is the bottom (6h) position.
+     *
+     * @param value start angle
+     */
+    public void setStartAngle(float value) {
+        startAngle = value;
+        initValues();
+        validate();
+        invalidate();
+    }
+
+    /**
+     * Set the end angle for the values. The origin is the bottom (6h) position.
+     *
+     * @param value end angle
+     */
+    public void setEndAngle(float value) {
+        endAngle = value;
         initValues();
         validate();
         invalidate();

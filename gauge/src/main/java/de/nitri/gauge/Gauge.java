@@ -113,7 +113,6 @@ public class Gauge extends View {
     public Gauge(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         applyAttrs(context, attrs);
-        initValues();
         initPaint();
     }
 
@@ -141,6 +140,7 @@ public class Gauge extends View {
         requestedLowerTextSize = a.getFloat(R.styleable.Gauge_lowerTextSize, 0);
         a.recycle();
 
+        initValues();
         validate();
     }
 
@@ -642,6 +642,7 @@ public class Gauge extends View {
      */
     public void setMajorNickInterval(int interval) {
         majorNickInterval = interval;
+        initValues();
         validate();
         invalidate();
     }

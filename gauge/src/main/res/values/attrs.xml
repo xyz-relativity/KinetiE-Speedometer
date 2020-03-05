@@ -3,7 +3,8 @@
 
     <declare-styleable name="Gauge">
         <attr name="totalNicks" format="integer" />
-        <attr name="valuePerNick" format="float" />
+        <attr name="startAngle" format="float" />
+        <attr name="endAngle" format="float" />
         <attr name="majorNickInterval" format="integer" />
         <attr name="minValue" format="float" />
         <attr name="maxValue" format="float" />

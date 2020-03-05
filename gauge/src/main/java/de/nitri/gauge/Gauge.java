@@ -49,8 +49,11 @@ public class Gauge extends View {
     private Paint scalePaint;
     private RectF scaleRect;
 
-    private int totalNicks = 120; // on a full circle
-    private float degreesPerNick = totalNicks / 360;
+    private int totalNicks = 120;
+    private float startAngle = 10;
+    private float endAngle = 350;
+    private float availableAngle = endAngle - startAngle;
+    private float degreesPerNick = availableAngle / totalNicks;
     private float valuePerNick = 10;
     private float minValue = 0;
     private float maxValue = 1000;
@@ -68,6 +71,7 @@ public class Gauge extends View {
     private float labelRadius;
 
     private int majorNickInterval = 10;
+    private int minorTicInterval = -1;
 
     private int deltaTimeInterval = 5;
     private float needleStepFactor = 3f;
@@ -116,9 +120,10 @@ public class Gauge extends View {
     private void applyAttrs(Context context, AttributeSet attrs) {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.Gauge, 0, 0);
         totalNicks = a.getInt(R.styleable.Gauge_totalNicks, totalNicks);
-        degreesPerNick = 360.0f / totalNicks;
-        valuePerNick = a.getFloat(R.styleable.Gauge_valuePerNick, valuePerNick);
-        majorNickInterval = a.getInt(R.styleable.Gauge_majorNickInterval, 10);
+        degreesPerNick = availableAngle / totalNicks;
+        startAngle = a.getFloat(R.styleable.Gauge_startAngle, valuePerNick);
+        endAngle = a.getFloat(R.styleable.Gauge_endAngle, valuePerNick);
+        majorNickInterval = a.getInt(R.styleable.Gauge_majorNickInterval, majorNickInterval);
         minValue = a.getFloat(R.styleable.Gauge_minValue, minValue);
         maxValue = a.getFloat(R.styleable.Gauge_maxValue, maxValue);
         intScale = a.getBoolean(R.styleable.Gauge_intScale, intScale);
@@ -140,9 +145,18 @@ public class Gauge extends View {
     }
 
     private void initValues() {
+        degreesPerNick = availableAngle / totalNicks;
         needleStep = needleStepFactor * valuePerDegree();
         centerValue = (minValue + maxValue) / 2;
         needleValue = value = initialValue;
+
+        if (majorNickInterval % 2 == 0) {
+            minorTicInterval = majorNickInterval/2;
+        } else if (majorNickInterval % 3 == 0) {
+            minorTicInterval = majorNickInterval/3;
+        } else if (majorNickInterval % 5 == 0) {
+            minorTicInterval = majorNickInterval/5;
+        }
 
         int widthPixels = getResources().getDisplayMetrics().widthPixels;
         textScaleFactor = (float) widthPixels / (float) REF_MAX_PORTRAIT_CANVAS_SIZE;
@@ -263,22 +277,23 @@ public class Gauge extends View {
     private void drawScale(Canvas canvas) {
 
         canvas.save();
-        for (int i = 0; i < totalNicks; ++i) {
-            float value = nickToValue(i);
 
-            if (value >= minValue && value <= maxValue) {
-                float y1 = scaleRect.top;
-                float y2 = y1 + (0.020f * canvasHeight);
-                float y3 = y1 + (0.060f * canvasHeight);
-                float y4 = y1 + (0.030f * canvasHeight);
+        //start at the bottom
+        canvas.rotate(180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
 
-                canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
+        float y1 = scaleRect.top;
+        float y2 = y1 + (0.020f * canvasHeight);
+        float y3 = y1 + (0.060f * canvasHeight);
+        float y4 = y1 + (0.030f * canvasHeight);
 
-                if (i % majorNickInterval == 0) {
-                    canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
-                }
+        for (int i = 0; i <= totalNicks; ++i) {
+            canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
-                if (i % (majorNickInterval / 2) == 0) {
+            if (i % majorNickInterval == 0) {
+                canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
+            }
+            if (minorTicInterval > 0) {
+                if (i % minorTicInterval == 0) {
                     canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
                 }
             }
@@ -615,19 +630,6 @@ public class Gauge extends View {
      */
     public void setTotalNicks(int nicks) {
         totalNicks = nicks;
-        degreesPerNick = 360.0f / totalNicks;
-        initValues();
-        validate();
-        invalidate();
-    }
-
-    /**
-     * Set the value (interval) per nick.
-     *
-     * @param value value per nick
-     */
-    public void setValuePerNick(float value) {
-        valuePerNick = value;
         initValues();
         validate();
         invalidate();

@@ -175,9 +175,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         gaugeView.setMinValue(0);
         gaugeView.setMaxValue(1000);
-        gaugeView.setTotalNicks(120);
-        gaugeView.setMajorNickInterval(10);
-        gaugeView.setValuePerNick(10);
+        gaugeView.setTotalNicks(300);
+        gaugeView.setMajorNickInterval(25);
     }
 
     private int getThemeColor(Context context, int colorAttr) {

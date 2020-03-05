@@ -455,14 +455,8 @@ public class Gauge extends View {
         }
     }
 
-    private float nickToValue(int nick) {
-        float rawValue = ((nick < totalNicks / 2) ? nick : (nick - totalNicks)) * valuePerNick;
-        return rawValue + centerValue;
-    }
-
     private float valueToDegrees(float value) {
-        // these are scale degrees, 0 is on top
-        return ((value - centerValue) / valuePerNick) * degreesPerNick;
+        return (value * degreesPerNick) + 180 + startAngle;
     }
 
     private float valuePerDegree() {

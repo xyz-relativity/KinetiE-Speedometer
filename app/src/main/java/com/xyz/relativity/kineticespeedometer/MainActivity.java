@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public String getLabelString(int nick, float value) {
-                if (shouldDrawMajorNick(nick, value)) {
+                if (nick != 0 && shouldDrawMajorNick(nick, value)) {
                     return String.valueOf(majorNickMap.get(nick));
                 } else {
                     return null;
@@ -271,17 +271,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 gaugeView.moveToValue(energy);
                 gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
 
+                if (data.getDataSetByIndex(0).getEntryCount() > MAX_SAMPLES) {
+                    data.getDataSetByIndex(0).removeFirst();
+                    data.getDataSetByIndex(1).removeFirst();
+                    data.getDataSetByIndex(2).removeFirst();
+                }
+
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();
                 chart.invalidate();
             }
         });
-
-        if (data.getDataSetByIndex(0).getEntryCount() > MAX_SAMPLES) {
-            data.getDataSetByIndex(0).removeFirst();
-            data.getDataSetByIndex(1).removeFirst();
-            data.getDataSetByIndex(2).removeFirst();
-        }
     }
 
     private void configureAxis(LineChart chart) {

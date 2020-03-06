@@ -62,7 +62,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     float prevTime = 0;
     float targetSpeed = 0;
     float speedStep = 0;
+    float deltaLeft = 0;
     float currentSpeed = targetSpeed;
+
     long startTime = System.currentTimeMillis();
     private Gauge gaugeView;
 
@@ -115,11 +117,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     prevTime = 0;
                 }
 
-                if (Math.abs(targetSpeed - currentSpeed) <= Math.abs(speedStep)) {
+                if (deltaLeft <= Math.abs(speedStep)) {
                     speedStep = 0;
                     currentSpeed = targetSpeed;
+                    deltaLeft = 0;
                 } else {
                     currentSpeed = currentSpeed + speedStep;
+                    deltaLeft = deltaLeft - Math.abs(speedStep);
                 }
 
                 float dt = time-prevTime;
@@ -260,7 +264,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     public void updatePosition(Location location) {
         if (location.hasSpeed()) {
             targetSpeed = location.getSpeed();
-            speedStep = (targetSpeed - currentSpeed) / 10;
+            deltaLeft = Math.abs(targetSpeed - currentSpeed);
+            speedStep = (targetSpeed - currentSpeed) / 10f;
         }
     }
 

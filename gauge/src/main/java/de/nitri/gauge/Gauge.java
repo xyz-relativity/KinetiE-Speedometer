@@ -89,7 +89,6 @@ public class Gauge extends View {
 
     private float needleStep;
 
-    private float centerValue;
     private float labelRadius;
 
     private int majorNickInterval = 10;
@@ -169,7 +168,6 @@ public class Gauge extends View {
         degreesPerNick = (endAngle - startAngle) / totalNicks;
         valuePerNick = (maxValue - minValue) / totalNicks;
         needleStep = needleStepFactor * valuePerDegree();
-        centerValue = (minValue + maxValue) / 2;
         needleValue = value = initialValue;
 
         if (majorNickInterval % 2 == 0) {
@@ -467,7 +465,7 @@ public class Gauge extends View {
 
     private float valueToDegrees(float value) {
         float angle = (value/valuePerNick * degreesPerNick);
-        return angle < endAngle ? angle  + 180 + startAngle : endAngle  + 180 + startAngle;
+        return angle <= endAngle ? angle  + 180 + startAngle : endAngle  + 180;
     }
 
     private float valuePerDegree() {

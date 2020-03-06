@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
@@ -114,11 +115,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     prevTime = 0;
                 }
 
-                if (Math.floor(currentSpeed) != Math.floor(targetSpeed)) {
-                    currentSpeed = currentSpeed + speedStep;
-                } else {
+                if (Math.abs(targetSpeed - currentSpeed) <= Math.abs(speedStep)) {
                     speedStep = 0;
                     currentSpeed = targetSpeed;
+                } else {
+                    currentSpeed = currentSpeed + speedStep;
                 }
 
                 float dt = time-prevTime;
@@ -325,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     }
 
     private LineData buildLineData() {
-        List<ILineDataSet> dataSets = new ArrayList<>();
+        List<ILineDataSet> dataSets = new CopyOnWriteArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
             LineDataSet dataSet = new LineDataSet(null, graph.label);

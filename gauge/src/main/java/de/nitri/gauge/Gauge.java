@@ -28,6 +28,29 @@ import android.view.View;
  * @since 2017-01-07
  */
 public class Gauge extends View {
+    private IGaugeNick gaugeNick = new IGaugeNick() {
+        @Override
+        public boolean shouldDrawMajorNick(int nick, float value) {
+            return (nick % majorNickInterval == 0);
+        }
+
+        @Override
+        public boolean shouldDrawHalfNick(int nick, float value) {
+            if (minorTicInterval > 0) {
+                return nick % minorTicInterval == 0;
+            }
+            return false;
+        }
+
+        @Override
+        public String getLabelString(int nick, float value) {
+            if (shouldDrawMajorNick(nick, value)) {
+                return String.valueOf(Math.round(value));
+            } else {
+                return null;
+            }
+        }
+    };
 
     private Paint needlePaint;
     private Path needlePath;
@@ -232,7 +255,6 @@ public class Gauge extends View {
         drawRim(canvas);
         drawFace(canvas);
         drawScale(canvas);
-        drawLabels(canvas);
         drawTexts(canvas);
         canvas.rotate(scaleToCanvasDegrees(valueToDegrees(needleValue)), canvasCenterX, canvasCenterY);
         canvas.drawPath(needlePath, needlePaint);
@@ -274,48 +296,36 @@ public class Gauge extends View {
     }
 
     private void drawScale(Canvas canvas) {
-
-        canvas.save();
-
-        //start at the bottom
-        canvas.rotate(180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
-
         float y1 = scaleRect.top;
         float y2 = y1 + (0.020f * canvasHeight);
         float y3 = y1 + (0.060f * canvasHeight);
         float y4 = y1 + (0.030f * canvasHeight);
 
         for (int i = 0; i <= totalNicks; ++i) {
+            canvas.save();
+            canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
             canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
-            if (i % majorNickInterval == 0) {
+            if (gaugeNick.shouldDrawMajorNick(i, i * (int)valuePerNick)) {
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
             }
-            if (minorTicInterval > 0) {
-                if (i % minorTicInterval == 0) {
-                    canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
-                }
-            }
 
-            canvas.rotate(degreesPerNick, 0.5f * canvasWidth, 0.5f * canvasHeight);
+            if (gaugeNick.shouldDrawHalfNick(i, i * (int)valuePerNick)) {
+                canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
+            }
+            canvas.restore();
+            drawLabels(canvas, i);
         }
-        canvas.restore();
     }
 
-    private void drawLabels(Canvas canvas) {
-        for (int i = 0; i <= totalNicks; i += majorNickInterval) {
-            float value = i * valuePerNick;
+    private void drawLabels(Canvas canvas, int i) {
+        String valueLabel = gaugeNick.getLabelString(i, i * valuePerNick);
+        if (valueLabel != null) {
             float scaleAngle = (i * degreesPerNick) + 180 + startAngle;
             float scaleAngleRads = (float) Math.toRadians(scaleAngle);
             //Log.d(TAG, "i = " + i + ", angle = " + scaleAngle + ", value = " + value);
             float deltaX = labelRadius * (float) Math.sin(scaleAngleRads);
             float deltaY = labelRadius * (float) Math.cos(scaleAngleRads);
-            String valueLabel;
-            if (intScale) {
-                valueLabel = String.valueOf((int) value);
-            } else {
-                valueLabel = String.valueOf(value);
-            }
             drawTextCentered(valueLabel, canvasCenterX + deltaX, canvasCenterY - deltaY, labelPaint, canvas);
         }
     }
@@ -657,6 +667,18 @@ public class Gauge extends View {
      */
     public void setMajorNickInterval(int interval) {
         majorNickInterval = interval;
+        initValues();
+        validate();
+        invalidate();
+    }
+
+    /**
+     * Set the class to handle when to draw a nick.
+     *
+     * @param nickHandler major nick interval
+     */
+    public void setNickHandler(IGaugeNick nickHandler) {
+        this.gaugeNick = nickHandler;
         initValues();
         validate();
         invalidate();

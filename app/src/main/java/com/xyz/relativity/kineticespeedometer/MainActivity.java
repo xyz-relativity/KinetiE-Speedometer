@@ -14,7 +14,6 @@ import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -31,12 +30,15 @@ import com.xyz.relativity.kineticespeedometer.sensors.LocationManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import de.nitri.gauge.Gauge;
+import de.nitri.gauge.IGaugeNick;
 
 public class MainActivity extends AppCompatActivity implements ILocationListener {
     private LocationManager locationManager;
@@ -44,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float MASS_KG = 1;
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
+    private static final float GAUGE_MAX_SPEED = 60;
 
 
     private static final int MAX_SAMPLES = 500;
@@ -166,11 +169,39 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private void initGauge() {
         gaugeView = findViewById(R.id.gauge);
 
+        float maxSpeedms = (GAUGE_MAX_SPEED / 3.6f);
+        int maxEnergy = Math.round(ONE_HALF_MASS_KG * maxSpeedms * maxSpeedms);
+
         gaugeView.setMinValue(0);
-        gaugeView.setMaxValue(1000);
-        gaugeView.setTotalNicks(300);
-        gaugeView.setMajorNickInterval(25);
-        gaugeView.setStartAngle(90);
+        gaugeView.setMaxValue(maxEnergy);
+        gaugeView.setTotalNicks(200);
+
+        final Map<Float, Integer> majotNickMap = new HashMap<>();
+        for (int i = 0; i <= GAUGE_MAX_SPEED; i +=10) {
+            float speedms = (i / 3.6f);
+            majotNickMap.put(ONE_HALF_MASS_KG * speedms * speedms, i);
+        }
+
+//        gaugeView.setNickHandler(new IGaugeNick() {
+//            @Override
+//            public boolean shouldDrawMajorNick(int nick, float value) {
+//                return majotNickMap.containsKey(value);
+//            }
+//
+//            @Override
+//            public boolean shouldDrawHalfNick(int nick, float value) {
+//                return false;
+//            }
+//
+//            @Override
+//            public String getLabelString(int nick, float value) {
+//                if (shouldDrawMajorNick(nick, value)) {
+//                    return String.valueOf(majotNickMap.get(value));
+//                } else {
+//                    return null;
+//                }
+//            }
+//        });
     }
 
     private int getThemeColor(Context context, int colorAttr) {

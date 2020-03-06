@@ -306,11 +306,11 @@ public class Gauge extends View {
             canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
             canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
-            if (gaugeNick.shouldDrawMajorNick(i, i * (int)valuePerNick)) {
+            if (gaugeNick.shouldDrawMajorNick(i, i * valuePerNick)) {
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
             }
 
-            if (gaugeNick.shouldDrawHalfNick(i, i * (int)valuePerNick)) {
+            if (gaugeNick.shouldDrawHalfNick(i, i * valuePerNick)) {
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
             }
             canvas.restore();

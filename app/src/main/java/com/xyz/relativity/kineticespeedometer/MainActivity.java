@@ -46,7 +46,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float MASS_KG = 1;
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
-    private static final float GAUGE_MAX_SPEED = 60;
+    private static final float GAUGE_MAX_SPEED = 100;
+    private static final int GAUGE_NICK_COUNT = 200;
 
 
     private static final int MAX_SAMPLES = 500;
@@ -173,35 +174,37 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         int maxEnergy = Math.round(ONE_HALF_MASS_KG * maxSpeedms * maxSpeedms);
 
         gaugeView.setMinValue(0);
-        gaugeView.setMaxValue(maxEnergy);
-        gaugeView.setTotalNicks(200);
+        gaugeView.setMaxValue(GAUGE_MAX_SPEED);
+        gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
 
-        final Map<Float, Integer> majotNickMap = new HashMap<>();
-        for (int i = 0; i <= GAUGE_MAX_SPEED; i +=10) {
-            float speedms = (i / 3.6f);
-            majotNickMap.put(ONE_HALF_MASS_KG * speedms * speedms, i);
+        float valuePerNick = (maxEnergy) / (float)GAUGE_NICK_COUNT;
+
+        final Map<Float, Integer> majorNickMap = new HashMap<>();
+
+        for (int i = 0; i <= GAUGE_MAX_SPEED; i += 10) {
+                majorNickMap.put(i * valuePerNick, i);
         }
 
-//        gaugeView.setNickHandler(new IGaugeNick() {
-//            @Override
-//            public boolean shouldDrawMajorNick(int nick, float value) {
-//                return majotNickMap.containsKey(value);
-//            }
-//
-//            @Override
-//            public boolean shouldDrawHalfNick(int nick, float value) {
-//                return false;
-//            }
-//
-//            @Override
-//            public String getLabelString(int nick, float value) {
-//                if (shouldDrawMajorNick(nick, value)) {
-//                    return String.valueOf(majotNickMap.get(value));
-//                } else {
-//                    return null;
-//                }
-//            }
-//        });
+        gaugeView.setNickHandler(new IGaugeNick() {
+            @Override
+            public boolean shouldDrawMajorNick(int nick, float value) {
+                return majorNickMap.containsKey(value);
+            }
+
+            @Override
+            public boolean shouldDrawHalfNick(int nick, float value) {
+                return false;
+            }
+
+            @Override
+            public String getLabelString(int nick, float value) {
+                if (shouldDrawMajorNick(nick, value)) {
+                    return String.valueOf(majorNickMap.get(value));
+                } else {
+                    return null;
+                }
+            }
+        });
     }
 
     private int getThemeColor(Context context, int colorAttr) {

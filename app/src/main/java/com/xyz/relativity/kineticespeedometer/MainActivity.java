@@ -46,8 +46,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float MASS_KG = 1;
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
-    private static final float GAUGE_MAX_SPEED = 100;
+    private static final float GAUGE_MAX_SPEED = 200;
     private static final int GAUGE_NICK_COUNT = 200;
+    private static final int MAJOR_NICK_FOR_SPEED = 20;
 
 
     private static final int MAX_SAMPLES = 500;
@@ -174,21 +175,24 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         int maxEnergy = Math.round(ONE_HALF_MASS_KG * maxSpeedms * maxSpeedms);
 
         gaugeView.setMinValue(0);
-        gaugeView.setMaxValue(GAUGE_MAX_SPEED);
+        gaugeView.setMaxValue(maxEnergy);
         gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
 
         float valuePerNick = (maxEnergy) / (float)GAUGE_NICK_COUNT;
 
-        final Map<Float, Integer> majorNickMap = new HashMap<>();
+        final Map<Integer, Integer> majorNickMap = new HashMap<>();
 
-        for (int i = 0; i <= GAUGE_MAX_SPEED; i += 10) {
-                majorNickMap.put(i * valuePerNick, i);
+        for (int i = 0; i <= GAUGE_NICK_COUNT; i ++) {
+            int speed = lookAround(i, valuePerNick);
+            if (speed % 10 == 0) {
+                majorNickMap.put(i, speed);
+            }
         }
 
         gaugeView.setNickHandler(new IGaugeNick() {
             @Override
             public boolean shouldDrawMajorNick(int nick, float value) {
-                return majorNickMap.containsKey(value);
+                return majorNickMap.containsKey(nick);
             }
 
             @Override
@@ -199,12 +203,38 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             @Override
             public String getLabelString(int nick, float value) {
                 if (shouldDrawMajorNick(nick, value)) {
-                    return String.valueOf(majorNickMap.get(value));
+                    return String.valueOf(majorNickMap.get(nick));
                 } else {
                     return null;
                 }
             }
         });
+    }
+
+    private int lookAround(int i, float valuePerNick) {
+        if (i == 0) return 0;
+
+        float speedkmh = (float) Math.sqrt((2 * i * valuePerNick) / MASS_KG) * 3.6f;
+
+        // Smaller multiple
+        int smallerMultiple = ((int)(speedkmh / MAJOR_NICK_FOR_SPEED) * MAJOR_NICK_FOR_SPEED);
+        // Larger multiple
+        int largerMultiple = smallerMultiple + MAJOR_NICK_FOR_SPEED;
+
+        int j = i;
+        float nextSpeed = (float) Math.sqrt((2 * j * valuePerNick) / MASS_KG) * 3.6f;
+
+        while (nextSpeed < largerMultiple) {
+            j++;
+            nextSpeed = (float) Math.sqrt((2 * j * valuePerNick) / MASS_KG) * 3.6f;
+        }
+        j--;
+
+        if (i == j) {
+            return largerMultiple;
+        } else {
+            return -1;
+        }
     }
 
     private int getThemeColor(Context context, int colorAttr) {

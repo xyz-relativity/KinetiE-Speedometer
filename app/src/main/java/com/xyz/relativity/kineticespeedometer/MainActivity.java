@@ -338,6 +338,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);
+            dataSet.setValueTextColor(graph.color);
             dataSet.setColor(graph.color);
             dataSet.setAxisDependency(graph.dependency);
             dataSets.add(dataSet);

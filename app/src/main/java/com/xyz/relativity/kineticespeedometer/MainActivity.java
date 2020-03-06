@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float GAUGE_MAX_SPEED = 200;
     private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
+    private static final int MINOR_NICK_FOR_SPEED = 10;
 
 
     private static final int MAX_SAMPLES = 500;
@@ -181,11 +182,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         float valuePerNick = (maxEnergy) / (float)GAUGE_NICK_COUNT;
 
         final Map<Integer, Integer> majorNickMap = new HashMap<>();
+        final Map<Integer, Integer> minorNickMap = new HashMap<>();
 
         for (int i = 0; i <= GAUGE_NICK_COUNT; i ++) {
-            int speed = lookAround(i, valuePerNick);
-            if (speed % 10 == 0) {
+            int speed = lookAround(i, valuePerNick, MAJOR_NICK_FOR_SPEED);
+            if (speed % MAJOR_NICK_FOR_SPEED == 0) {
                 majorNickMap.put(i, speed);
+            }
+
+            speed = lookAround(i, valuePerNick, MINOR_NICK_FOR_SPEED);
+            if (speed % MINOR_NICK_FOR_SPEED == 0) {
+                minorNickMap.put(i, speed);
             }
         }
 
@@ -197,7 +204,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public boolean shouldDrawHalfNick(int nick, float value) {
-                return false;
+                return minorNickMap.containsKey(nick);
             }
 
             @Override
@@ -211,15 +218,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         });
     }
 
-    private int lookAround(int i, float valuePerNick) {
+    private int lookAround(int i, float valuePerNick, int nickInterval) {
         if (i == 0) return 0;
 
         float speedkmh = (float) Math.sqrt((2 * i * valuePerNick) / MASS_KG) * 3.6f;
 
         // Smaller multiple
-        int smallerMultiple = ((int)(speedkmh / MAJOR_NICK_FOR_SPEED) * MAJOR_NICK_FOR_SPEED);
+        int smallerMultiple = ((int)(speedkmh / nickInterval) * nickInterval);
         // Larger multiple
-        int largerMultiple = smallerMultiple + MAJOR_NICK_FOR_SPEED;
+        int largerMultiple = smallerMultiple + nickInterval;
 
         int j = i;
         float nextSpeed = (float) Math.sqrt((2 * j * valuePerNick) / MASS_KG) * 3.6f;

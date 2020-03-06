@@ -466,8 +466,8 @@ public class Gauge extends View {
     }
 
     private float valueToDegrees(float value) {
-        float angle = (value/valuePerNick * degreesPerNick) + 180 + startAngle;
-        return angle < endAngle ? angle : endAngle;
+        float angle = (value/valuePerNick * degreesPerNick);
+        return angle < endAngle ? angle  + 180 + startAngle : endAngle  + 180 + startAngle;
     }
 
     private float valuePerDegree() {

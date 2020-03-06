@@ -273,17 +273,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             data.addEntry(new Entry(time, acceleration), LineGraphs.ACCELERATION.ordinal());
         }
 
+        if (data.getDataSetByIndex(0).getEntryCount() > MAX_SAMPLES) {
+            data.getDataSetByIndex(0).removeFirst();
+            data.getDataSetByIndex(1).removeFirst();
+            data.getDataSetByIndex(2).removeFirst();
+        }
+
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 gaugeView.moveToValue(energy);
                 gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
-
-                if (data.getDataSetByIndex(0).getEntryCount() > MAX_SAMPLES) {
-                    data.getDataSetByIndex(0).removeFirst();
-                    data.getDataSetByIndex(1).removeFirst();
-                    data.getDataSetByIndex(2).removeFirst();
-                }
 
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();

@@ -47,12 +47,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
     private static final float GAUGE_MAX_SPEED = 200;
-    private static final int GAUGE_NICK_COUNT = 120;
+    private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
 
 
-    private static final int MAX_SAMPLES = 500;
+    private static final int MAX_SAMPLES = 700;
 
     private LineChart chart;
     Timer timer = new Timer();

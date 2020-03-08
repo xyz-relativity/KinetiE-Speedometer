@@ -68,16 +68,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private Gauge gaugeView;
 
     enum LineGraphs {
-        ACCELERATION("Acceleration (g)", Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
-        SPEED("Speed (km/h)", Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
-        ENERGY("Kinetic Energy/1kg (joules)", Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT);
+        ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
+        SPEED(R.string.speed, Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
+        ENERGY(R.string.kinetic_energy, Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT);
 
-        public String label;
+        public int label;
         public int color;
         public float lineSize;
         public YAxis.AxisDependency dependency;
 
-        LineGraphs(String label, int color, float lineSize, YAxis.AxisDependency dependency) {
+        LineGraphs(int label, int color, float lineSize, YAxis.AxisDependency dependency) {
             this.label = label;
             this.color = color;
             this.lineSize = lineSize;
@@ -333,7 +333,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         List<ILineDataSet> dataSets = new CopyOnWriteArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
-            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.label);
+            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), getString(graph.label));
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);

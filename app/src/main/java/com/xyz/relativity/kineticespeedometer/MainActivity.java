@@ -28,7 +28,6 @@ import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 import com.xyz.relativity.kineticespeedometer.sensors.LocationManager;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
     private static final float GAUGE_MAX_SPEED = 200;
-    private static final int GAUGE_NICK_COUNT = 200;
+    private static final int GAUGE_NICK_COUNT = 120;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
 
@@ -334,11 +333,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         List<ILineDataSet> dataSets = new CopyOnWriteArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
-            LineDataSet dataSet = new LineDataSet(null, graph.label);
+            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.label);
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);
             dataSet.setValueTextColor(graph.color);
+            dataSet.setDrawVerticalHighlightIndicator(true);
             dataSet.setColor(graph.color);
             dataSet.setAxisDependency(graph.dependency);
             dataSets.add(dataSet);

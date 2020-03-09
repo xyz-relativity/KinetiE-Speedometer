@@ -269,28 +269,29 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
-        final LineData data = chart.getData();
-        data.addEntry(new Entry(time, speed), LineGraphs.SPEED.ordinal());
-        data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
-
-        if (acceleration != null) {
-            data.addEntry(new Entry(time, acceleration), LineGraphs.ACCELERATION.ordinal());
-        }
-
-        if (data.getDataSetByIndex(0).getEntryCount() > MAX_SAMPLES) {
-            data.getDataSetByIndex(0).removeFirst();
-            data.getDataSetByIndex(1).removeFirst();
-            data.getDataSetByIndex(2).removeFirst();
-        }
-
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                gaugeView.moveToValue(energy);
-                gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
+                final LineData data = chart.getData();
+                data.addEntry(new Entry(time, speed), LineGraphs.SPEED.ordinal());
+                data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
+
+                if (acceleration != null) {
+                    data.addEntry(new Entry(time, acceleration), LineGraphs.ACCELERATION.ordinal());
+                }
+
+                for (ILineDataSet i: data.getDataSets()) {
+                    if (i.getEntryCount() > MAX_SAMPLES) {
+                        i.removeFirst();
+                    }
+                }
 
                 data.notifyDataChanged();
                 chart.notifyDataSetChanged();
+
+                gaugeView.moveToValue(energy);
+                gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
+
                 chart.invalidate();
             }
         });
@@ -298,22 +299,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     private void configureAxis(LineChart chart) {
         if (LineGraphs.ACCELERATION.dependency == YAxis.AxisDependency.RIGHT) {
-            chart.getAxisRight().setGridColor(LineGraphs.ACCELERATION.color);
-            chart.getAxisRight().setTextColor(LineGraphs.ACCELERATION.color);
-            chart.getAxisRight().setAxisLineColor(LineGraphs.ACCELERATION.color);
-
-            chart.getAxisLeft().setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
-            chart.getAxisLeft().setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
-            chart.getAxisLeft().setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
-
+            prepareAccelerationAxis(chart.getAxisRight());
+            prepareSpeedEnergyAxis(chart.getAxisLeft());
         } else {
-            chart.getAxisLeft().setGridColor(LineGraphs.ACCELERATION.color);
-            chart.getAxisLeft().setTextColor(LineGraphs.ACCELERATION.color);
-            chart.getAxisLeft().setAxisLineColor(LineGraphs.ACCELERATION.color);
-
-            chart.getAxisRight().setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
-            chart.getAxisRight().setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
-            chart.getAxisRight().setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+            prepareAccelerationAxis(chart.getAxisLeft());
+            prepareSpeedEnergyAxis(chart.getAxisRight());
         }
 
         XAxis xAxis = chart.getXAxis();
@@ -327,6 +317,19 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 return format.format( new Date(startTime + (long)value));
             }
         });
+    }
+
+    private void prepareAccelerationAxis(YAxis axis) {
+        axis.setGridColor(LineGraphs.ACCELERATION.color);
+        axis.setTextColor(LineGraphs.ACCELERATION.color);
+        axis.setAxisLineColor(LineGraphs.ACCELERATION.color);
+    }
+
+    private void prepareSpeedEnergyAxis(YAxis axis) {
+        axis.setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+        axis.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+        axis.setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+        axis.setAxisMinimum(0);
     }
 
     private LineData buildLineData() {

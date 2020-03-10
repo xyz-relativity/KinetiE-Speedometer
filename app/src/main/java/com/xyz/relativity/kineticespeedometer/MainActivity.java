@@ -50,8 +50,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
-
-
     private static final int MAX_SAMPLES = 700;
 
     private LineChart chart;
@@ -76,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         public int color;
         public float lineSize;
         public YAxis.AxisDependency dependency;
+        public List<Entry>container = new CopyOnWriteArrayList<>();
 
         LineGraphs(int label, int color, float lineSize, YAxis.AxisDependency dependency) {
             this.label = label;
@@ -106,6 +105,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         initChart();
         initGauge();
 
+        timer.cancel();
+        timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -125,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     deltaLeft = deltaLeft - Math.abs(speedStep);
                 }
 
-                float dt = time-prevTime;
+                float dt = time - prevTime;
                 Float acceleration = null;
                 if (dt != 0) {
                     acceleration = ((currentSpeed - prevSpeed) / (time - prevTime)) * G_UNIT_CONVERSION;
@@ -269,7 +270,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
-        MainActivity.this.runOnUiThread(new Runnable() {
+        this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 final LineData data = chart.getData();

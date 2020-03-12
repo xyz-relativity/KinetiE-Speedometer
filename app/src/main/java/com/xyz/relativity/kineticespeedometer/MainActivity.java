@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     long startTime = System.currentTimeMillis();
     private Gauge gaugeView;
+    private boolean isRunning = false;
 
     enum LineGraphs {
         ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
@@ -288,12 +289,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 }
 
                 data.notifyDataChanged();
-                chart.notifyDataSetChanged();
 
-                gaugeView.moveToValue(energy);
-                gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f",speed));
+                if (isRunning) {
+                    chart.notifyDataSetChanged();
 
-                chart.invalidate();
+                    gaugeView.moveToValue(energy);
+                    gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
+
+                    chart.invalidate();
+                }
             }
         });
     }
@@ -354,6 +358,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     @Override
     protected void onResume() {
         super.onResume();
+        isRunning = true;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         locationManager.onResume();
     }
@@ -362,6 +367,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     protected void onPause() {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         locationManager.onPause();
+        isRunning = false;
         super.onPause();
     }
 

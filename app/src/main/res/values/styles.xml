@@ -10,4 +10,10 @@
         <item name="android:textColor">#AAAAAA</item>
     </style>
 
+    <style name="energyTextView">
+        <item name="android:textColor">#FFFF0000</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
 </resources>

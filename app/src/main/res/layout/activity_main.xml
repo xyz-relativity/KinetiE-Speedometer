@@ -13,24 +13,33 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.6"
-        >
+        android:layout_weight="0.6">
 
         <de.nitri.gauge.Gauge
             android:id="@+id/gauge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            app:layout_constraintBottom_toTopOf="@+id/energyTextView"
             app:layout_constraintDimensionRatio="1:1"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             gauge:faceColor="#22ffffff"
-            gauge:rimColor="#22ffffff"
-            gauge:scaleColor="#ff00ff00"
             gauge:labelTextSize="42"
             gauge:lowerText="test"
-            gauge:upperText="Km/h"
+            gauge:rimColor="#22ffffff"
+            gauge:scaleColor="#ff00ff00"
+            gauge:upperText="Km/h" />
+
+        <TextView
+            android:id="@+id/energyTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0.0 (j)"
+            style="@style/energyTextView"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
             />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

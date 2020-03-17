@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -64,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     long startTime = System.currentTimeMillis();
     private Gauge gaugeView;
+    TextView energyTextView;
     private boolean isRunning = false;
 
     enum LineGraphs {
@@ -103,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         locationManager = new LocationManager(this, 100);
         locationManager.addListener(this);
 
+        energyTextView = findViewById(R.id.energyTextView);
         initChart();
         initGauge();
 
@@ -293,6 +296,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 if (isRunning) {
                     chart.notifyDataSetChanged();
 
+                    energyTextView.setText(String.format(Locale.getDefault(), "%.1f (joules)", energy));
+                    
                     gaugeView.moveToValue(energy);
                     gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
 

@@ -13,7 +13,9 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.6">
+        android:layout_weight="0.6"
+        android:layout_marginBottom="10dp"
+        >
 
         <de.nitri.gauge.Gauge
             android:id="@+id/gauge"
@@ -29,7 +31,8 @@
             gauge:lowerText="test"
             gauge:rimColor="#22ffffff"
             gauge:scaleColor="#ff00ff00"
-            gauge:upperText="Km/h" />
+            gauge:upperText="Km/h"
+            />
 
         <TextView
             android:id="@+id/energyTextView"
@@ -50,7 +53,6 @@
         android:layout_height="0dp"
         android:layout_weight="0.4"
         android:background="#00ffffff"
-
         />
 
 </LinearLayout>

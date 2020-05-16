@@ -11,6 +11,7 @@ import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.util.TimeUtils;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
@@ -47,11 +49,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final float MASS_KG = 1;
     private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
     private static final float G_UNIT_CONVERSION = 0.10197162129779f;
-    private static final float GAUGE_MAX_SPEED = 200;
+    private static final float GAUGE_MAX_SPEED_KH = 200;
+    private static final float MAX_SPEED_MS = (GAUGE_MAX_SPEED_KH / 3.6f); // convert to meters per second.
+    private static final int GAUGE_MAX_ENERGY = Math.round(ONE_HALF_MASS_KG * MAX_SPEED_MS * MAX_SPEED_MS);
     private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
-    private static final int MAX_SAMPLES = 700;
+    private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(300);
+    private static final int SPEED_UPDATE_INTERVAL_MILLISECONDS = 100;
+
+    private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int)TimeUnit.SECONDS.toMillis(1)/SPEED_UPDATE_INTERVAL_MILLISECONDS);
 
     private LineChart chart;
     Timer timer = new Timer();
@@ -102,7 +109,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         }
 
         //location
-        locationManager = new LocationManager(this, 100);
+        locationManager = new LocationManager(this, SPEED_UPDATE_INTERVAL_MILLISECONDS);
         locationManager.addListener(this);
 
         energyTextView = findViewById(R.id.energyTextView);
@@ -180,15 +187,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     private void initGauge() {
         gaugeView = findViewById(R.id.gauge);
-
-        float maxSpeedms = (GAUGE_MAX_SPEED / 3.6f);
-        int maxEnergy = Math.round(ONE_HALF_MASS_KG * maxSpeedms * maxSpeedms);
-
         gaugeView.setMinValue(0);
-        gaugeView.setMaxValue(maxEnergy);
+        gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
         gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
 
-        float valuePerNick = (maxEnergy) / (float)GAUGE_NICK_COUNT;
+        float valuePerNick = (GAUGE_MAX_ENERGY) / (float)GAUGE_NICK_COUNT;
 
         final Map<Integer, Integer> majorNickMap = new HashMap<>();
         final Map<Integer, Integer> minorNickMap = new HashMap<>();

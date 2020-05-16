@@ -31,7 +31,7 @@ public class LocationManager implements LocationListener, OnSuccessListener<Loca
     private AppCompatActivity parent;
     private List<ILocationListener> eventsHandler = new ArrayList<>();
 
-    public LocationManager(AppCompatActivity parent, int frequency) {
+    public LocationManager(AppCompatActivity parent, int intercal) {
         this.parent = parent;
 
         mLocationCallback = new LocationCallback() {
@@ -45,8 +45,8 @@ public class LocationManager implements LocationListener, OnSuccessListener<Loca
                 }
             }
         };
-        mLocationRequest.setInterval(frequency);
-        mLocationRequest.setFastestInterval(frequency);
+        mLocationRequest.setInterval(intercal);
+        mLocationRequest.setFastestInterval(intercal);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(parent);

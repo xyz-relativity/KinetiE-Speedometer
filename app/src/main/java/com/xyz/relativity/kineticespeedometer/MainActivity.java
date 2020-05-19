@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
-    private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(300);
+    private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(10);
     private static final int SPEED_UPDATE_INTERVAL_MILLISECONDS = 250;
 
     private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int)TimeUnit.SECONDS.toMillis(1)/SPEED_UPDATE_INTERVAL_MILLISECONDS);

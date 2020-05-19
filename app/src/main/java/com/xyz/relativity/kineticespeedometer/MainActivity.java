@@ -55,10 +55,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final int GAUGE_NICK_COUNT = 200;
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
+    private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
     private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(10);
-    private static final int SPEED_UPDATE_INTERVAL_MILLISECONDS = 250;
+    private static final int GRAPH_UPDATE_INTERVAL_MILLISECONDS = 100;
 
-    private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int)TimeUnit.SECONDS.toMillis(1)/SPEED_UPDATE_INTERVAL_MILLISECONDS);
+    private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int)TimeUnit.SECONDS.toMillis(1)/GRAPH_UPDATE_INTERVAL_MILLISECONDS);
 
     private LineChart chart;
     Timer timer = new Timer();
@@ -109,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         }
 
         //location
-        locationManager = new LocationManager(this, SPEED_UPDATE_INTERVAL_MILLISECONDS);
+        locationManager = new LocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS);
         locationManager.addListener(this);
 
         energyTextView = findViewById(R.id.energyTextView);
@@ -147,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 prevTime = time;
                 prevSpeed = currentSpeed;
             }
-        }, 0, 100);
+        }, 0, GRAPH_UPDATE_INTERVAL_MILLISECONDS);
     }
 
     private void initChart() {

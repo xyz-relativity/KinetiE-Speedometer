@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private static final int MAJOR_NICK_FOR_SPEED = 20;
     private static final int MINOR_NICK_FOR_SPEED = 10;
     private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
-    private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(10);
+    private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int)TimeUnit.MINUTES.toSeconds(5);
     private static final int GRAPH_UPDATE_INTERVAL_MILLISECONDS = 100;
 
     private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int)TimeUnit.SECONDS.toMillis(1)/GRAPH_UPDATE_INTERVAL_MILLISECONDS);
@@ -77,9 +77,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private boolean isRunning = false;
 
     enum LineGraphs {
-        ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
-        SPEED(R.string.speed, Color.rgb(0, 255, 0), 4f, YAxis.AxisDependency.RIGHT),
-        ENERGY(R.string.kinetic_energy, Color.rgb(255, 0, 0), 2f, YAxis.AxisDependency.RIGHT);
+        ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
+        SPEED(R.string.speed, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
+        ENERGY(R.string.kinetic_energy, Color.rgb(255, 0, 0), 1f, YAxis.AxisDependency.RIGHT);
 
         public int label;
         public int color;

@@ -30,8 +30,18 @@ import android.view.View;
 public class Gauge extends View {
     private IGaugeNick gaugeNick = new IGaugeNick() {
         @Override
+        public int getNicColor() {
+            return scaleColor;
+        }
+
+        @Override
         public boolean shouldDrawMajorNick(int nick, float value) {
             return (nick % majorNickInterval == 0);
+        }
+
+        @Override
+        public int getMajorNicColor() {
+            return scaleColor;
         }
 
         @Override
@@ -43,12 +53,22 @@ public class Gauge extends View {
         }
 
         @Override
-        public String getLabelString(int nick, float value) {
+        public int getMinorNicColor() {
+            return scaleColor;
+        }
+
+        @Override
+        public String getNicLabelString(int nick, float value) {
             if (shouldDrawMajorNick(nick, value)) {
                 return String.valueOf(Math.round(value));
             } else {
                 return null;
             }
+        }
+
+        @Override
+        public int getNicLabelColor() {
+            return scaleColor;
         }
     };
 
@@ -104,6 +124,8 @@ public class Gauge extends View {
     private int faceColor;
     private int rimColor;
     private int scaleColor;
+    private int upperTextColor;
+    private int lowerTextColor;
     private int needleColor;
     private Paint upperTextPaint;
     private Paint lowerTextPaint;
@@ -151,6 +173,8 @@ public class Gauge extends View {
         faceColor = a.getColor(R.styleable.Gauge_faceColor, Color.argb(0xff, 0xff, 0xff, 0xff));
         rimColor = a.getColor(R.styleable.Gauge_rimColor, Color.argb(0x4f, 0x33, 0x36, 0x33));
         scaleColor = a.getColor(R.styleable.Gauge_scaleColor, 0x9f004d0f);
+        upperTextColor = a.getColor(R.styleable.Gauge_upperTextColor, 0x9f004d0f);
+        lowerTextColor = a.getColor(R.styleable.Gauge_lowerTextColor, 0x9f004d0f);
         needleColor = a.getColor(R.styleable.Gauge_needleColor, Color.RED);
         needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
         requestedTextSize = a.getFloat(R.styleable.Gauge_textSize, requestedTextSize);
@@ -225,12 +249,12 @@ public class Gauge extends View {
         labelPaint.setTextAlign(Paint.Align.CENTER);
 
         upperTextPaint = new Paint();
-        upperTextPaint.setColor(scaleColor);
+        upperTextPaint.setColor(upperTextColor);
         upperTextPaint.setTypeface(Typeface.SANS_SERIF);
         upperTextPaint.setTextAlign(Paint.Align.CENTER);
 
         lowerTextPaint = new Paint();
-        lowerTextPaint.setColor(scaleColor);
+        lowerTextPaint.setColor(lowerTextColor);
         lowerTextPaint.setTypeface(Typeface.SANS_SERIF);
         lowerTextPaint.setTextAlign(Paint.Align.CENTER);
 
@@ -301,14 +325,17 @@ public class Gauge extends View {
 
         for (int i = 0; i <= totalNicks; ++i) {
             canvas.save();
+            scalePaint.setColor(gaugeNick.getNicColor());
             canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
             canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
             if (gaugeNick.shouldDrawMajorNick(i, i * valuePerNick)) {
+                scalePaint.setColor(gaugeNick.getMajorNicColor());
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
             }
 
             if (gaugeNick.shouldDrawHalfNick(i, i * valuePerNick)) {
+                scalePaint.setColor(gaugeNick.getMinorNicColor());
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
             }
             canvas.restore();
@@ -317,8 +344,9 @@ public class Gauge extends View {
     }
 
     private void drawLabels(Canvas canvas, int i) {
-        String valueLabel = gaugeNick.getLabelString(i, i * valuePerNick);
+        String valueLabel = gaugeNick.getNicLabelString(i, i * valuePerNick);
         if (valueLabel != null) {
+            labelPaint.setColor(gaugeNick.getNicLabelColor());
             float scaleAngle = (i * degreesPerNick) + 180 + startAngle;
             float scaleAngleRads = (float) Math.toRadians(scaleAngle);
             //Log.d(TAG, "i = " + i + ", angle = " + scaleAngle + ", value = " + value);
@@ -394,7 +422,6 @@ public class Gauge extends View {
         } else {
             textSize = canvasWidth / 16f;
         }
-        Log.d(TAG, "Label text size = " + textSize);
         labelPaint.setTextSize(textSize);
 
         if (requestedTextSize > 0) {
@@ -402,7 +429,6 @@ public class Gauge extends View {
         } else {
             textSize = canvasWidth / 14f;
         }
-        Log.d(TAG, "Default upper/lower text size = " + textSize);
         upperTextPaint.setTextSize(requestedUpperTextSize > 0 ? requestedUpperTextSize * textScaleFactor: textSize);
         lowerTextPaint.setTextSize(requestedLowerTextSize > 0 ? requestedLowerTextSize * textScaleFactor: textSize);
 

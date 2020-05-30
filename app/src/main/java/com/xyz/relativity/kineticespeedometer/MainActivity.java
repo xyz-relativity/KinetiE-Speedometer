@@ -211,8 +211,18 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         gaugeView.setNickHandler(new IGaugeNick() {
             @Override
+            public int getNicColor() {
+                return Color.RED;
+            }
+
+            @Override
             public boolean shouldDrawMajorNick(int nick, float value) {
                 return majorNickMap.containsKey(nick);
+            }
+
+            @Override
+            public int getMajorNicColor() {
+                return Color.GREEN;
             }
 
             @Override
@@ -221,12 +231,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             }
 
             @Override
-            public String getLabelString(int nick, float value) {
+            public int getMinorNicColor() {
+                return Color.RED;
+            }
+
+            @Override
+            public String getNicLabelString(int nick, float value) {
                 if (nick != 0 && shouldDrawMajorNick(nick, value)) {
                     return String.valueOf(majorNickMap.get(nick));
                 } else {
                     return null;
                 }
+            }
+
+            @Override
+            public int getNicLabelColor() {
+                return Color.GREEN;
             }
         });
     }
@@ -300,9 +320,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 if (isRunning) {
                     chart.notifyDataSetChanged();
 
-                    energyTextView.setText(String.format(Locale.getDefault(), "%.1f (joules)", energy));
+                    //energyTextView.setText(String.format(Locale.getDefault(), "%.1f (J)", energy));
                     
                     gaugeView.moveToValue(energy);
+                    gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", energy));
                     gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
 
                     chart.invalidate();

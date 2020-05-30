@@ -29,22 +29,12 @@
             gauge:faceColor="#22ffffff"
             gauge:labelTextSize="42"
             gauge:lowerText="test"
+            gauge:lowerTextColor="#ffff0000"
             gauge:rimColor="#22ffffff"
             gauge:scaleColor="#ff00ff00"
-            gauge:upperText="Km/h"
+            gauge:upperText="100"
+            gauge:upperTextColor="#ff00ff00"
             />
-
-        <TextView
-            android:id="@+id/energyTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0.0 (j)"
-            style="@style/energyTextView"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.github.mikephil.charting.charts.LineChart

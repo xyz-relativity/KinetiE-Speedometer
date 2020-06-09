@@ -77,27 +77,34 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
     private boolean isRunning = false;
 
     enum LineGraphs {
-        ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
-        SPEED(R.string.speed, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
-        ENERGY(R.string.kinetic_energy, Color.rgb(255, 0, 0), 1f, YAxis.AxisDependency.RIGHT);
+        ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
+        SPEED(R.string.speed_label, R.string.speed_unit, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
+        ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.rgb(255, 255, 0), 1f, YAxis.AxisDependency.RIGHT);
 
         public int label;
+        public int unit;
         public int color;
         public float lineSize;
         public YAxis.AxisDependency dependency;
         public List<Entry>container = new CopyOnWriteArrayList<>();
 
-        LineGraphs(int label, int color, float lineSize, YAxis.AxisDependency dependency) {
+        LineGraphs(int label, int unit, int color, float lineSize, YAxis.AxisDependency dependency) {
             this.label = label;
+            this.unit = unit;
             this.color = color;
             this.lineSize = lineSize;
             this.dependency = dependency;
+        }
+
+        public String getLabelWithUnit(Context c) {
+            return c.getString(label, c.getString(unit));
         }
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -155,7 +162,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart = findViewById(R.id.chart);
 
         chart.setAutoScaleMinMaxEnabled(true);
-        chart.setNoDataText("No chart data available. Use the menu to add entries and data sets!");
         chart.setDrawGridBackground(false);
         chart.getDescription().setEnabled(false);
 
@@ -186,11 +192,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart.invalidate(); // refresh
     }
 
-    private void initGauge() {
+    private void initGauge(){
         gaugeView = findViewById(R.id.gauge);
         gaugeView.setMinValue(0);
         gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
         gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
+
+        gaugeView.setUpperTextUnit(getString(LineGraphs.SPEED.unit));
+        gaugeView.setUpperTextColor(LineGraphs.SPEED.color);
+        gaugeView.setLowerTextUnit(getString(LineGraphs.ENERGY.unit));
+        gaugeView.setLowerTextColor(LineGraphs.ENERGY.color);
 
         float valuePerNick = (GAUGE_MAX_ENERGY) / (float)GAUGE_NICK_COUNT;
 
@@ -212,7 +223,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         gaugeView.setNickHandler(new IGaugeNick() {
             @Override
             public int getNicColor() {
-                return Color.RED;
+                return LineGraphs.ENERGY.color;
             }
 
             @Override
@@ -222,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getMajorNicColor() {
-                return Color.GREEN;
+                return LineGraphs.SPEED.color;
             }
 
             @Override
@@ -232,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getMinorNicColor() {
-                return Color.RED;
+                return LineGraphs.ENERGY.color;
             }
 
             @Override
@@ -246,7 +257,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getNicLabelColor() {
-                return Color.GREEN;
+                return LineGraphs.SPEED.color;
             }
         });
     }
@@ -371,7 +382,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         List<ILineDataSet> dataSets = new CopyOnWriteArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
-            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), getString(graph.label));
+            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.getLabelWithUnit(this));
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);

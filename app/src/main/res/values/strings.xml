@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">KineticE Speedometer</string>
-    <string name="acceleration">Acceleration (g)</string>
-    <string name="speed">Speed (km/h)</string>
-    <string name="kinetic_energy">Kinetic Energy/1kg (joules)</string>
+    <string name="acceleration_label">Acceleration (%s)</string>
+    <string name="acceleration_unit">g</string>
+    <string name="speed_label">Speed (%s)</string>
+    <string name="speed_unit">Km/h</string>
+    <string name="kinetic_energy_label">Kinetic Energy/1kg (%s)</string>
+    <string name="kinetic_energy_unit">Joule</string>
 </resources>

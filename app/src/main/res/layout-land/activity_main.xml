@@ -28,10 +28,12 @@
             gauge:faceColor="#22ffffff"
             gauge:labelTextSize="42"
             gauge:lowerText="test"
+            gauge:lowerTextUnit="Jouls"
             gauge:lowerTextColor="#ffff0000"
             gauge:rimColor="#22ffffff"
             gauge:scaleColor="#ff00ff00"
             gauge:upperText="100"
+            gauge:upperTextUnit="Km/h"
             gauge:upperTextColor="#ff00ff00"
             />
 

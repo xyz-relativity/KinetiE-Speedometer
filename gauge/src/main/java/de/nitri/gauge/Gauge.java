@@ -19,6 +19,8 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.ColorInt;
+
 /**
  * A Gauge View on Android
  *
@@ -556,6 +558,27 @@ public class Gauge extends View {
     }
 
     /**
+     * Set unit string to display on upper gauge face.
+     *
+     * @param text Text
+     */
+    public void setUpperTextUnit(String text) {
+        upperTextUnit = text;
+        invalidate();
+    }
+
+    /**
+     * Set color for string to display on upper gauge face.
+     *
+     * @param color Color
+     */
+    public void setUpperTextColor(@ColorInt int color) {
+        upperTextColor = color;
+        initValues();
+        initPaint();
+    }
+
+    /**
      * Set string to display on lower gauge face.
      *
      * @param text Text
@@ -563,6 +586,27 @@ public class Gauge extends View {
     public void setLowerText(String text) {
         lowerText = text;
         invalidate();
+    }
+
+    /**
+     * Set unit string to display on lower gauge face.
+     *
+     * @param text Text
+     */
+    public void setLowerTextUnit(String text) {
+        lowerTextUnit = text;
+        invalidate();
+    }
+
+    /**
+     * Set color for string to display on upper gauge face.
+     *
+     * @param color Color
+     */
+    public void setLowerTextColor(@ColorInt int color) {
+        lowerTextColor = color;
+        initValues();
+        initPaint();
     }
 
     /**

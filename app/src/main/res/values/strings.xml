@@ -4,6 +4,6 @@
     <string name="acceleration_unit">g</string>
     <string name="speed_label">Speed (%s)</string>
     <string name="speed_unit">Km/h</string>
-    <string name="kinetic_energy_label">Kinetic Energy/1kg (%s)</string>
-    <string name="kinetic_energy_unit">Joule</string>
+    <string name="kinetic_energy_label">Specific Energy (%s)</string>
+    <string name="kinetic_energy_unit">Joule/kg</string>
 </resources>

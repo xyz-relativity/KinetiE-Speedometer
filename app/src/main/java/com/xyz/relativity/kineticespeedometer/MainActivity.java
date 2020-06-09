@@ -73,7 +73,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     long startTime = System.currentTimeMillis();
     private Gauge gaugeView;
-    TextView energyTextView;
     private boolean isRunning = false;
 
     enum LineGraphs {
@@ -120,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         locationManager = new LocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS);
         locationManager.addListener(this);
 
-        energyTextView = findViewById(R.id.energyTextView);
         initChart();
         initGauge();
 
@@ -183,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         Legend legend = chart.getLegend();
         legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
-        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.LEFT);
+        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
         legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
         legend.setDrawInside(false);
         legend.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
@@ -192,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart.invalidate(); // refresh
     }
 
-    private void initGauge(){
+    private void initGauge() {
         gaugeView = findViewById(R.id.gauge);
         gaugeView.setMinValue(0);
         gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
@@ -334,8 +332,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     //energyTextView.setText(String.format(Locale.getDefault(), "%.1f (J)", energy));
                     
                     gaugeView.moveToValue(energy);
-                    gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", energy));
-                    gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
+                    gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
+                    gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
 
                     chart.invalidate();
                 }

@@ -134,7 +134,9 @@ public class Gauge extends View {
     private float requestedUpperTextSize = 0;
     private float requestedLowerTextSize = 0;
     private String upperText = "";
+    private String upperTextUnit = "";
     private String lowerText = "";
+    private String lowerTextUnit = "";
 
     private float textScaleFactor;
 
@@ -179,7 +181,9 @@ public class Gauge extends View {
         needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
         requestedTextSize = a.getFloat(R.styleable.Gauge_textSize, requestedTextSize);
         upperText = a.getString(R.styleable.Gauge_upperText) == null ? upperText : fromHtml(a.getString(R.styleable.Gauge_upperText)).toString();
+        upperTextUnit = a.getString(R.styleable.Gauge_upperTextUnit) == null ? upperTextUnit : fromHtml(a.getString(R.styleable.Gauge_upperTextUnit)).toString();
         lowerText = a.getString(R.styleable.Gauge_lowerText) == null ? lowerText : fromHtml(a.getString(R.styleable.Gauge_lowerText)).toString();
+        lowerTextUnit = a.getString(R.styleable.Gauge_lowerTextUnit) == null ? lowerTextUnit : fromHtml(a.getString(R.styleable.Gauge_lowerTextUnit)).toString();
         requestedUpperTextSize = a.getFloat(R.styleable.Gauge_upperTextSize, 0);
         requestedLowerTextSize = a.getFloat(R.styleable.Gauge_lowerTextSize, 0);
         a.recycle();
@@ -358,7 +362,9 @@ public class Gauge extends View {
 
     private void drawTexts(Canvas canvas) {
         drawTextCentered(upperText, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f), upperTextPaint, canvas);
+        drawTextCentered(upperTextUnit, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f) - upperTextPaint.getTextSize(), upperTextPaint, canvas);
         drawTextCentered(lowerText, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f), lowerTextPaint, canvas);
+        drawTextCentered(lowerTextUnit, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f) + upperTextPaint.getTextSize(), lowerTextPaint, canvas);
     }
 
     @Override

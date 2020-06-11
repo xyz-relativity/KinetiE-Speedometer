@@ -12,7 +12,6 @@ import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
-import android.util.TimeUtils;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
@@ -196,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         legend.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 
         chart.setData(buildLineData());
+        chart.setMaxVisibleValueCount(MAX_SAMPLES);
         chart.invalidate(); // refresh
     }
 
@@ -313,6 +313,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             deltaLeft = Math.abs(targetSpeed - currentSpeed);
             speedStep = (targetSpeed - currentSpeed) / 10f;
         }
+        else {
+            targetSpeed = Math.abs(targetSpeed + (float)Math.random() * 20 -10);
+            deltaLeft = Math.abs(targetSpeed - currentSpeed);
+            speedStep = (targetSpeed - currentSpeed) / 10f;
+        }
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
@@ -328,7 +333,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 }
 
                 for (ILineDataSet i: data.getDataSets()) {
-                    if (i.getEntryCount() > MAX_SAMPLES) {
+                    if (i.getEntryCount() >= MAX_SAMPLES) {
                         i.removeFirst();
                     }
                 }
@@ -393,6 +398,18 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);
+            dataSet.setDrawValues(false);
+            dataSet.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.format(".2f", value);
+                }
+
+                @Override
+                public String getPointLabel(Entry entry) {
+                    return super.getPointLabel(entry);
+                }
+            });
             dataSet.setValueTextColor(graph.color);
             dataSet.setDrawVerticalHighlightIndicator(true);
             dataSet.setColor(graph.color);

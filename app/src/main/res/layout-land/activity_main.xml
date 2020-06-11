@@ -23,9 +23,9 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
             android:text="2020.06"
-            android:textColor="#88888888"
+            android:textColor="#77777777"
             android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             />
 

@@ -16,6 +16,19 @@
         android:layout_weight="0.5"
         >
 
+        <TextView
+            android:id="@+id/textVersionString"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:text="2020.06"
+            android:textColor="#88888888"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            />
+
         <de.nitri.gauge.Gauge
             android:id="@+id/gauge"
             android:layout_width="wrap_content"

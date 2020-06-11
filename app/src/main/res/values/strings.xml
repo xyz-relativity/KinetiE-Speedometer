@@ -6,4 +6,5 @@
     <string name="speed_unit">Km/h</string>
     <string name="kinetic_energy_label">Specific Energy (%s)</string>
     <string name="kinetic_energy_unit">Joule/kg</string>
+    <string name="version">v. %s</string>
 </resources>

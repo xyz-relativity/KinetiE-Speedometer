@@ -364,9 +364,9 @@ public class Gauge extends View {
 
     private void drawTexts(Canvas canvas) {
         drawTextCentered(upperText, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f), upperTextPaint, canvas);
-        drawTextCentered(upperTextUnit, upperTextPaint.getTextSize() / 2, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f) - upperTextPaint.getTextSize(), upperTextPaint, canvas);
+        drawTextCentered(upperTextUnit, upperTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f) - upperTextPaint.getTextSize(), upperTextPaint, canvas);
         drawTextCentered(lowerText, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f), lowerTextPaint, canvas);
-        drawTextCentered(lowerTextUnit, lowerTextPaint.getTextSize() / 2, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f) + upperTextPaint.getTextSize(), lowerTextPaint, canvas);
+        drawTextCentered(lowerTextUnit, lowerTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f) + upperTextPaint.getTextSize(), lowerTextPaint, canvas);
     }
 
     @Override
@@ -514,11 +514,16 @@ public class Gauge extends View {
         return Math.abs(needleValue - value) > 0;
     }
 
-    private void drawTextCentered(String text, float textSize, float x, float y, Paint paint, Canvas canvas) {
+    private void drawTextCentered(String text, float textSize, boolean bold, float x, float y, Paint paint, Canvas canvas) {
         float currentTextSize = paint.getTextSize();
         paint.setTextSize(textSize);
+        Typeface typeface = paint.getTypeface();
+        if (bold) {
+            paint.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD));
+        }
         drawTextCentered(text, x, y, paint, canvas);
         paint.setTextSize(currentTextSize);
+        paint.setTypeface(typeface);
     }
 
     private void drawTextCentered(String text, float x, float y, Paint paint, Canvas canvas) {

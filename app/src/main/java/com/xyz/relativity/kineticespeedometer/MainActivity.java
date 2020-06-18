@@ -6,12 +6,12 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
-import android.util.TimeUtils;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
@@ -73,35 +73,49 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
     long startTime = System.currentTimeMillis();
     private Gauge gaugeView;
-    TextView energyTextView;
     private boolean isRunning = false;
 
     enum LineGraphs {
-        ACCELERATION(R.string.acceleration, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
-        SPEED(R.string.speed, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
-        ENERGY(R.string.kinetic_energy, Color.rgb(255, 0, 0), 1f, YAxis.AxisDependency.RIGHT);
+        ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
+        SPEED(R.string.speed_label, R.string.speed_unit, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
+        ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.rgb(255, 255, 0), 1f, YAxis.AxisDependency.RIGHT);
 
         public int label;
+        public int unit;
         public int color;
         public float lineSize;
         public YAxis.AxisDependency dependency;
         public List<Entry>container = new CopyOnWriteArrayList<>();
 
-        LineGraphs(int label, int color, float lineSize, YAxis.AxisDependency dependency) {
+        LineGraphs(int label, int unit, int color, float lineSize, YAxis.AxisDependency dependency) {
             this.label = label;
+            this.unit = unit;
             this.color = color;
             this.lineSize = lineSize;
             this.dependency = dependency;
+        }
+
+        public String getLabelWithUnit(Context c) {
+            return c.getString(label, c.getString(unit));
         }
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
+
+        String version = "";
+        try {
+            PackageInfo pInfo = this.getPackageManager().getPackageInfo(getPackageName(), 0);
+            version = getString(R.string.version, pInfo.versionName);
+            ((TextView)findViewById(R.id.textVersionString)).setText(version);
+        } catch (PackageManager.NameNotFoundException ignore) {
+        }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -113,7 +127,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         locationManager = new LocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS);
         locationManager.addListener(this);
 
-        energyTextView = findViewById(R.id.energyTextView);
         initChart();
         initGauge();
 
@@ -155,7 +168,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         chart = findViewById(R.id.chart);
 
         chart.setAutoScaleMinMaxEnabled(true);
-        chart.setNoDataText("No chart data available. Use the menu to add entries and data sets!");
         chart.setDrawGridBackground(false);
         chart.getDescription().setEnabled(false);
 
@@ -177,12 +189,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         Legend legend = chart.getLegend();
         legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
-        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.LEFT);
+        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
         legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
         legend.setDrawInside(false);
         legend.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 
         chart.setData(buildLineData());
+        chart.setMaxVisibleValueCount(MAX_SAMPLES);
         chart.invalidate(); // refresh
     }
 
@@ -191,6 +204,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         gaugeView.setMinValue(0);
         gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
         gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
+
+        gaugeView.setUpperTextUnit(getString(LineGraphs.SPEED.unit));
+        gaugeView.setUpperTextColor(LineGraphs.SPEED.color);
+        gaugeView.setLowerTextUnit(getString(LineGraphs.ENERGY.unit));
+        gaugeView.setLowerTextColor(LineGraphs.ENERGY.color);
 
         float valuePerNick = (GAUGE_MAX_ENERGY) / (float)GAUGE_NICK_COUNT;
 
@@ -212,7 +230,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         gaugeView.setNickHandler(new IGaugeNick() {
             @Override
             public int getNicColor() {
-                return Color.RED;
+                return LineGraphs.ENERGY.color;
             }
 
             @Override
@@ -222,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getMajorNicColor() {
-                return Color.GREEN;
+                return LineGraphs.SPEED.color;
             }
 
             @Override
@@ -232,7 +250,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getMinorNicColor() {
-                return Color.RED;
+                return LineGraphs.ENERGY.color;
             }
 
             @Override
@@ -246,7 +264,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
             @Override
             public int getNicLabelColor() {
-                return Color.GREEN;
+                return LineGraphs.SPEED.color;
             }
         });
     }
@@ -295,6 +313,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             deltaLeft = Math.abs(targetSpeed - currentSpeed);
             speedStep = (targetSpeed - currentSpeed) / 10f;
         }
+        else {
+            targetSpeed = Math.abs(targetSpeed + (float)Math.random() * 20 -10);
+            deltaLeft = Math.abs(targetSpeed - currentSpeed);
+            speedStep = (targetSpeed - currentSpeed) / 10f;
+        }
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
@@ -310,7 +333,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 }
 
                 for (ILineDataSet i: data.getDataSets()) {
-                    if (i.getEntryCount() > MAX_SAMPLES) {
+                    if (i.getEntryCount() >= MAX_SAMPLES) {
                         i.removeFirst();
                     }
                 }
@@ -323,8 +346,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     //energyTextView.setText(String.format(Locale.getDefault(), "%.1f (J)", energy));
                     
                     gaugeView.moveToValue(energy);
-                    gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", energy));
-                    gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
+                    gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
+                    gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
 
                     chart.invalidate();
                 }
@@ -371,10 +394,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         List<ILineDataSet> dataSets = new CopyOnWriteArrayList<>();
 
         for (LineGraphs graph: LineGraphs.values()) {
-            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), getString(graph.label));
+            LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.getLabelWithUnit(this));
             dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             dataSet.setLineWidth(graph.lineSize);
             dataSet.setDrawCircles(false);
+            dataSet.setDrawValues(false);
+            dataSet.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.format(".2f", value);
+                }
+
+                @Override
+                public String getPointLabel(Entry entry) {
+                    return super.getPointLabel(entry);
+                }
+            });
             dataSet.setValueTextColor(graph.color);
             dataSet.setDrawVerticalHighlightIndicator(true);
             dataSet.setColor(graph.color);

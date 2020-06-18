@@ -18,9 +18,11 @@
         <attr name="needleColor" format="color" />
         <attr name="textSize" format="float" />
         <attr name="upperText" format="string" />
+        <attr name="upperTextUnit" format="string" />
         <attr name="upperTextColor" format="color" />
         <attr name="upperTextSize" format="float" />
         <attr name="lowerText" format="string" />
+        <attr name="lowerTextUnit" format="string" />
         <attr name="lowerTextColor" format="color" />
         <attr name="lowerTextSize" format="float" />
 

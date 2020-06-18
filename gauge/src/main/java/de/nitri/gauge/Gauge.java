@@ -19,6 +19,8 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.ColorInt;
+
 /**
  * A Gauge View on Android
  *
@@ -134,7 +136,9 @@ public class Gauge extends View {
     private float requestedUpperTextSize = 0;
     private float requestedLowerTextSize = 0;
     private String upperText = "";
+    private String upperTextUnit = "";
     private String lowerText = "";
+    private String lowerTextUnit = "";
 
     private float textScaleFactor;
 
@@ -179,7 +183,9 @@ public class Gauge extends View {
         needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
         requestedTextSize = a.getFloat(R.styleable.Gauge_textSize, requestedTextSize);
         upperText = a.getString(R.styleable.Gauge_upperText) == null ? upperText : fromHtml(a.getString(R.styleable.Gauge_upperText)).toString();
+        upperTextUnit = a.getString(R.styleable.Gauge_upperTextUnit) == null ? upperTextUnit : fromHtml(a.getString(R.styleable.Gauge_upperTextUnit)).toString();
         lowerText = a.getString(R.styleable.Gauge_lowerText) == null ? lowerText : fromHtml(a.getString(R.styleable.Gauge_lowerText)).toString();
+        lowerTextUnit = a.getString(R.styleable.Gauge_lowerTextUnit) == null ? lowerTextUnit : fromHtml(a.getString(R.styleable.Gauge_lowerTextUnit)).toString();
         requestedUpperTextSize = a.getFloat(R.styleable.Gauge_upperTextSize, 0);
         requestedLowerTextSize = a.getFloat(R.styleable.Gauge_lowerTextSize, 0);
         a.recycle();
@@ -358,7 +364,9 @@ public class Gauge extends View {
 
     private void drawTexts(Canvas canvas) {
         drawTextCentered(upperText, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f), upperTextPaint, canvas);
+        drawTextCentered(upperTextUnit, upperTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f) - upperTextPaint.getTextSize(), upperTextPaint, canvas);
         drawTextCentered(lowerText, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f), lowerTextPaint, canvas);
+        drawTextCentered(lowerTextUnit, lowerTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f) + upperTextPaint.getTextSize(), lowerTextPaint, canvas);
     }
 
     @Override
@@ -506,6 +514,18 @@ public class Gauge extends View {
         return Math.abs(needleValue - value) > 0;
     }
 
+    private void drawTextCentered(String text, float textSize, boolean bold, float x, float y, Paint paint, Canvas canvas) {
+        float currentTextSize = paint.getTextSize();
+        paint.setTextSize(textSize);
+        Typeface typeface = paint.getTypeface();
+        if (bold) {
+            paint.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD));
+        }
+        drawTextCentered(text, x, y, paint, canvas);
+        paint.setTextSize(currentTextSize);
+        paint.setTypeface(typeface);
+    }
+
     private void drawTextCentered(String text, float x, float y, Paint paint, Canvas canvas) {
         //float xPos = x - (paint.measureText(text)/2f);
         float yPos = (y - ((paint.descent() + paint.ascent()) / 2f));
@@ -543,6 +563,27 @@ public class Gauge extends View {
     }
 
     /**
+     * Set unit string to display on upper gauge face.
+     *
+     * @param text Text
+     */
+    public void setUpperTextUnit(String text) {
+        upperTextUnit = text;
+        invalidate();
+    }
+
+    /**
+     * Set color for string to display on upper gauge face.
+     *
+     * @param color Color
+     */
+    public void setUpperTextColor(@ColorInt int color) {
+        upperTextColor = color;
+        initValues();
+        initPaint();
+    }
+
+    /**
      * Set string to display on lower gauge face.
      *
      * @param text Text
@@ -550,6 +591,27 @@ public class Gauge extends View {
     public void setLowerText(String text) {
         lowerText = text;
         invalidate();
+    }
+
+    /**
+     * Set unit string to display on lower gauge face.
+     *
+     * @param text Text
+     */
+    public void setLowerTextUnit(String text) {
+        lowerTextUnit = text;
+        invalidate();
+    }
+
+    /**
+     * Set color for string to display on upper gauge face.
+     *
+     * @param color Color
+     */
+    public void setLowerTextColor(@ColorInt int color) {
+        lowerTextColor = color;
+        initValues();
+        initPaint();
     }
 
     /**

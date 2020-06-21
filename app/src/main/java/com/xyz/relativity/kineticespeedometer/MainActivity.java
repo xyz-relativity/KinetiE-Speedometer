@@ -229,7 +229,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         gaugeView.setNickHandler(new IGaugeNick() {
             @Override
-            public int getNicColor() {
+            public int getNicColor(int nick, float value) {
                 return LineGraphs.ENERGY.color;
             }
 
@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             }
 
             @Override
-            public int getMajorNicColor() {
+            public int getMajorNicColor(int nick, float value) {
                 return LineGraphs.SPEED.color;
             }
 
@@ -249,8 +249,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             }
 
             @Override
-            public int getMinorNicColor() {
-                return LineGraphs.ENERGY.color;
+            public int getHalfNicColor(int nick, float value) {
+                return LineGraphs.SPEED.color;
             }
 
             @Override

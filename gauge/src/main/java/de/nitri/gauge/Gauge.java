@@ -32,7 +32,7 @@ import androidx.annotation.ColorInt;
 public class Gauge extends View {
     private IGaugeNick gaugeNick = new IGaugeNick() {
         @Override
-        public int getNicColor() {
+        public int getNicColor(int nick, float value) {
             return scaleColor;
         }
 
@@ -42,7 +42,7 @@ public class Gauge extends View {
         }
 
         @Override
-        public int getMajorNicColor() {
+        public int getMajorNicColor(int nick, float value) {
             return scaleColor;
         }
 
@@ -55,7 +55,7 @@ public class Gauge extends View {
         }
 
         @Override
-        public int getMinorNicColor() {
+        public int getHalfNicColor(int nick, float value) {
             return scaleColor;
         }
 
@@ -331,19 +331,23 @@ public class Gauge extends View {
 
         for (int i = 0; i <= totalNicks; ++i) {
             canvas.save();
-            scalePaint.setColor(gaugeNick.getNicColor());
-            canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
-            canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
 
-            if (gaugeNick.shouldDrawMajorNick(i, i * valuePerNick)) {
-                scalePaint.setColor(gaugeNick.getMajorNicColor());
+            float value = i*valuePerNick;
+            canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
+
+            if (gaugeNick.shouldDrawMajorNick(i, value)) {
+                scalePaint.setColor(gaugeNick.getMajorNicColor(i, value));
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
             }
 
-            if (gaugeNick.shouldDrawHalfNick(i, i * valuePerNick)) {
-                scalePaint.setColor(gaugeNick.getMinorNicColor());
+            if (gaugeNick.shouldDrawHalfNick(i, value)) {
+                scalePaint.setColor(gaugeNick.getHalfNicColor(i, value));
                 canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
             }
+
+            scalePaint.setColor(gaugeNick.getNicColor(i, value));
+            canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
+
             canvas.restore();
             drawLabels(canvas, i);
         }

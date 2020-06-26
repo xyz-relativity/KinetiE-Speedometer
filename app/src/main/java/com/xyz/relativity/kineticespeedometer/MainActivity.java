@@ -129,7 +129,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
         initChart();
         initGauge();
+    }
 
+    private void initAnimationTimer() {
         timer.cancel();
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -426,6 +428,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
         isRunning = true;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         locationManager.onResume();
+        initAnimationTimer();
     }
 
     @Override

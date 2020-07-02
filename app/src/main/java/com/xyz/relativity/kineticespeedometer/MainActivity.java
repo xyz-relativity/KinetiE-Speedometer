@@ -153,10 +153,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                     deltaLeft = deltaLeft - Math.abs(speedStep);
                 }
 
-                float dt = time - prevTime;
+                float dt = (time - prevTime)/1000;
                 Float acceleration = null;
                 if (dt != 0) {
-                    acceleration = ((currentSpeed - prevSpeed) / (time - prevTime)) * G_UNIT_CONVERSION;
+                    acceleration = ((currentSpeed - prevSpeed) / dt) * G_UNIT_CONVERSION;
                 }
 
                 updateUi(time, currentSpeed * 3.6f, (ONE_HALF_MASS_KG * currentSpeed * currentSpeed), acceleration);
@@ -315,11 +315,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             deltaLeft = Math.abs(targetSpeed - currentSpeed);
             speedStep = (targetSpeed - currentSpeed) / 10f;
         }
-        else {
-            targetSpeed = Math.abs(targetSpeed + (float)Math.random() * 20 -10);
-            deltaLeft = Math.abs(targetSpeed - currentSpeed);
-            speedStep = (targetSpeed - currentSpeed) / 10f;
-        }
     }
 
     private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
@@ -345,8 +340,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
                 if (isRunning) {
                     chart.notifyDataSetChanged();
 
-                    //energyTextView.setText(String.format(Locale.getDefault(), "%.1f (J)", energy));
-                    
                     gaugeView.moveToValue(energy);
                     gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
                     gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
@@ -404,7 +397,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
             dataSet.setValueFormatter(new ValueFormatter() {
                 @Override
                 public String getFormattedValue(float value) {
-                    return String.format(".2f", value);
+                    return String.format(Locale.getDefault(), "%.2f", value);
                 }
 
                 @Override

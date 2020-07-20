@@ -8,5 +8,3 @@ A GPS (for now) speedometer with a non linear gauge. The gauge nicks are set on 
 ![Kinetc Speedometer](media/Screenshot_4.png "Kinetic Speedometer")
 ![Kinetc Speedometer](media/Screenshot_5.png "Kinetic Speedometer")
 ![Kinetc Speedometer](media/Screenshot_6.png "Kinetic Speedometer")
-![Kinetc Speedometer](media/Screenshot_7.png "Kinetic Speedometer")
-![Kinetc Speedometer](media/Screenshot_8.png "Kinetic Speedometer")

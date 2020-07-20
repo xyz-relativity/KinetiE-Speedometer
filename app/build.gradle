@@ -8,8 +8,8 @@ android {
         applicationId "com.xyz.relativity.kineticespeedometer"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 202006111
-        versionName "2020.06.11"
+        versionCode 202007201
+        versionName "2020.07.20"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

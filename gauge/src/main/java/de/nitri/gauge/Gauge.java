@@ -251,16 +251,23 @@ public class Gauge extends View {
 
         labelPaint = new Paint();
         labelPaint.setColor(scaleColor);
-        labelPaint.setTypeface(Typeface.SANS_SERIF);
         labelPaint.setTextAlign(Paint.Align.CENTER);
+        labelPaint.setSubpixelText(true);
+        labelPaint.setFakeBoldText(true);
+        labelPaint.setAntiAlias(true);
+        labelPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 
         upperTextPaint = new Paint();
         upperTextPaint.setColor(upperTextColor);
+        upperTextPaint.setSubpixelText(true);
+        upperTextPaint.setAntiAlias(true);
         upperTextPaint.setTypeface(Typeface.SANS_SERIF);
         upperTextPaint.setTextAlign(Paint.Align.CENTER);
 
         lowerTextPaint = new Paint();
         lowerTextPaint.setColor(lowerTextColor);
+        lowerTextPaint.setSubpixelText(true);
+        lowerTextPaint.setAntiAlias(true);
         lowerTextPaint.setTypeface(Typeface.SANS_SERIF);
         lowerTextPaint.setTextAlign(Paint.Align.CENTER);
 

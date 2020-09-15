@@ -39,7 +39,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             gauge:faceColor="#22ffffff"
-            gauge:labelTextSize="42"
+            gauge:labelTextSize="48"
             gauge:lowerText="test"
             gauge:lowerTextColor="#ffff0000"
             gauge:lowerTextUnit="Jouls"

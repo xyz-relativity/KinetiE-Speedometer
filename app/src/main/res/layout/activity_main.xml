@@ -7,14 +7,12 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity"
     android:background="@drawable/carbon_fiber"
-    android:orientation="vertical"
-    >
+    android:orientation="vertical">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.5"
-        >
+        android:layout_weight="0.5">
 
         <TextView
             android:id="@+id/textVersionString"
@@ -26,8 +24,7 @@
             android:textColor="#77777777"
             android:textSize="12sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            />
+            app:layout_constraintTop_toTopOf="parent" />
 
         <de.nitri.gauge.Gauge
             android:id="@+id/gauge"
@@ -55,7 +52,6 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.4"
-        android:background="#00ffffff"
-        />
+        android:background="#00ffffff" />
 
 </LinearLayout>

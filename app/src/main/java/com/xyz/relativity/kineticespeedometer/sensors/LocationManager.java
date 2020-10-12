@@ -25,88 +25,88 @@ import java.util.List;
 
 public class LocationManager implements LocationListener, OnSuccessListener<Location> {
 
-    private FusedLocationProviderClient mFusedLocationClient;
-    private LocationCallback mLocationCallback;
-    private LocationRequest mLocationRequest = new LocationRequest();
-    private AppCompatActivity parent;
-    private List<ILocationListener> eventsHandler = new ArrayList<>();
+	private FusedLocationProviderClient mFusedLocationClient;
+	private LocationCallback mLocationCallback;
+	private LocationRequest mLocationRequest = new LocationRequest();
+	private AppCompatActivity parent;
+	private List<ILocationListener> eventsHandler = new ArrayList<>();
 
-    public LocationManager(AppCompatActivity parent, int interval) {
-        this.parent = parent;
+	public LocationManager(AppCompatActivity parent, int interval) {
+		this.parent = parent;
 
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null) {
-                    return;
-                }
-                for (Location location : locationResult.getLocations()) {
-                    onLocationChanged(location);
-                }
-            }
-        };
-        mLocationRequest.setInterval(interval);
-        mLocationRequest.setFastestInterval(interval);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+		mLocationCallback = new LocationCallback() {
+			@Override
+			public void onLocationResult(LocationResult locationResult) {
+				if (locationResult == null) {
+					return;
+				}
+				for (Location location : locationResult.getLocations()) {
+					onLocationChanged(location);
+				}
+			}
+		};
+		mLocationRequest.setInterval(interval);
+		mLocationRequest.setFastestInterval(interval);
+		mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(parent);
-        if (ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mFusedLocationClient.getLastLocation().addOnSuccessListener(parent, this);
-    }
+		mFusedLocationClient = LocationServices.getFusedLocationProviderClient(parent);
+		if (ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+				&& ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			return;
+		}
+		mFusedLocationClient.getLastLocation().addOnSuccessListener(parent, this);
+	}
 
-    public void addListener(ILocationListener... pEventsHandler) {
-        for (ILocationListener i : pEventsHandler) {
-            if (!eventsHandler.contains(i)) {
-                eventsHandler.add(i);
-            }
-        }
+	public void addListener(ILocationListener... pEventsHandler) {
+		for (ILocationListener i : pEventsHandler) {
+			if (!eventsHandler.contains(i)) {
+				eventsHandler.add(i);
+			}
+		}
 
-    }
+	}
 
-    public void onResume() {
-        if (ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                mLocationCallback,
-                null /* Looper */);
-    }
+	public void onResume() {
+		if (ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+				&& ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			return;
+		}
+		mFusedLocationClient.requestLocationUpdates(mLocationRequest,
+				mLocationCallback,
+				null /* Looper */);
+	}
 
-    public void onPause() {
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-    }
+	public void onPause() {
+		mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+	}
 
-    @Override
-    public void onLocationChanged(Location location) {
-        for (ILocationListener client : eventsHandler) {
-            client.updatePosition(location);
-        }
-    }
+	@Override
+	public void onLocationChanged(Location location) {
+		for (ILocationListener client : eventsHandler) {
+			client.updatePosition(location);
+		}
+	}
 
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
 
-    }
+	}
 
-    @Override
-    public void onProviderEnabled(String provider) {
+	@Override
+	public void onProviderEnabled(String provider) {
 
-    }
+	}
 
-    @Override
-    public void onProviderDisabled(String provider) {
+	@Override
+	public void onProviderDisabled(String provider) {
 
-    }
+	}
 
-    @Override
-    public void onSuccess(Location location) {
-        // Got last known location. In some rare situations this can be null.
-        if (location != null) {
-            onLocationChanged(location);
-        }
-    }
+	@Override
+	public void onSuccess(Location location) {
+		// Got last known location. In some rare situations this can be null.
+		if (location != null) {
+			onLocationChanged(location);
+		}
+	}
 }

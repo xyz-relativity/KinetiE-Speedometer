@@ -7,14 +7,12 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity"
     android:background="@drawable/carbon_fiber"
-    android:orientation="horizontal"
-    >
+    android:orientation="horizontal">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="0.5"
-        >
+        android:layout_weight="0.5">
 
         <TextView
             android:id="@+id/textVersionString"
@@ -26,8 +24,7 @@
             android:textColor="#77777777"
             android:textSize="12sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            />
+            app:layout_constraintTop_toTopOf="parent" />
 
         <de.nitri.gauge.Gauge
             android:id="@+id/gauge"
@@ -46,8 +43,7 @@
             gauge:scaleColor="#ff00ff00"
             gauge:upperText="100"
             gauge:upperTextUnit="Km/h"
-            gauge:upperTextColor="#ff00ff00"
-            />
+            gauge:upperTextColor="#ff00ff00" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

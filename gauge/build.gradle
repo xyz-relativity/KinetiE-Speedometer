@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-group='com.github.Pygmalion69'
+group = 'com.github.Pygmalion69'
 
 android {
     compileSdkVersion 29

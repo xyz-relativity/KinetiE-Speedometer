@@ -26,8 +26,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.xyz.relativity.kineticespeedometer.sensors.DeviceLocationManager;
 import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
-import com.xyz.relativity.kineticespeedometer.sensors.LocationManager;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -44,7 +44,7 @@ import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
 
 public class MainActivity extends AppCompatActivity implements ILocationListener {
-	private LocationManager locationManager;
+	private DeviceLocationManager locationManager;
 
 	private static final float MASS_KG = 1;
 	private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
@@ -124,8 +124,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		}
 
 		//location
-		locationManager = new LocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS);
-		locationManager.addListener(this);
+		locationManager = new DeviceLocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS, this);
 
 		initChart();
 		initGauge();
@@ -307,6 +306,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		return color;
 	}
+
+
 
 	@Override
 	public void updatePosition(Location location) {

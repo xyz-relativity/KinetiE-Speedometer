@@ -44,6 +44,8 @@ public class FuseLocationProvider implements LocationListener {
 		lastLocation = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
 		if (lastLocation != null) {
 			updateListeners();
+		} else {
+			lastLocation = new Location(LocationManager.PASSIVE_PROVIDER);
 		}
 	}
 

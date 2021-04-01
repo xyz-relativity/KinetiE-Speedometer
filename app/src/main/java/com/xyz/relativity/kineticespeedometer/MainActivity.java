@@ -206,10 +206,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
 		gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
 
-		gaugeView.setUpperTextUnit(getString(LineGraphs.SPEED.unit));
-		gaugeView.setUpperTextColor(LineGraphs.SPEED.color);
-		gaugeView.setLowerTextUnit(getString(LineGraphs.ENERGY.unit));
-		gaugeView.setLowerTextColor(LineGraphs.ENERGY.color);
+		gaugeView.setUpperTextUnit(getString(LineGraphs.ENERGY.unit));
+		gaugeView.setUpperTextColor(LineGraphs.ENERGY.color);
+		gaugeView.setLowerTextUnit(getString(LineGraphs.SPEED.unit));
+		gaugeView.setLowerTextColor(LineGraphs.SPEED.color);
 
 		float valuePerNick = (GAUGE_MAX_ENERGY) / (float) GAUGE_NICK_COUNT;
 
@@ -342,8 +342,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 					chart.notifyDataSetChanged();
 
 					gaugeView.moveToValue(energy);
-					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
-					gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
+					gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
+					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", energy));
 
 					chart.invalidate();
 				}

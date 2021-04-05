@@ -1,6 +1,7 @@
 package de.nitri.gauge;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -16,6 +17,7 @@ import android.os.Parcelable;
 import android.text.Html;
 import android.text.Spanned;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 
@@ -30,6 +32,7 @@ import androidx.annotation.ColorInt;
  * @since 2017-01-07
  */
 public class Gauge extends View {
+	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(5).floatValue();
 	private IGaugeNick gaugeNick = new IGaugeNick() {
 		@Override
 		public int getNicColor(int nick, float value) {
@@ -173,7 +176,7 @@ public class Gauge extends View {
 		maxValue = a.getFloat(R.styleable.Gauge_maxValue, maxValue);
 		intScale = a.getBoolean(R.styleable.Gauge_intScale, intScale);
 		initialValue = a.getFloat(R.styleable.Gauge_initialValue, initialValue);
-		requestedLabelTextSize = a.getFloat(R.styleable.Gauge_labelTextSize, requestedLabelTextSize);
+		requestedLabelTextSize = a.getDimension(R.styleable.Gauge_nickLabelTextSize, requestedLabelTextSize);
 		faceColor = a.getColor(R.styleable.Gauge_faceColor, Color.argb(0xff, 0xff, 0xff, 0xff));
 		rimColor = a.getColor(R.styleable.Gauge_rimColor, Color.argb(0x4f, 0x33, 0x36, 0x33));
 		scaleColor = a.getColor(R.styleable.Gauge_scaleColor, 0x9f004d0f);
@@ -181,13 +184,13 @@ public class Gauge extends View {
 		lowerTextColor = a.getColor(R.styleable.Gauge_lowerTextColor, 0x9f004d0f);
 		needleColor = a.getColor(R.styleable.Gauge_needleColor, Color.RED);
 		needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
-		requestedTextSize = a.getFloat(R.styleable.Gauge_textSize, requestedTextSize);
+		requestedTextSize = a.getDimension(R.styleable.Gauge_textSize, requestedTextSize);
 		upperText = a.getString(R.styleable.Gauge_upperText) == null ? upperText : fromHtml(a.getString(R.styleable.Gauge_upperText)).toString();
 		upperTextUnit = a.getString(R.styleable.Gauge_upperTextUnit) == null ? upperTextUnit : fromHtml(a.getString(R.styleable.Gauge_upperTextUnit)).toString();
 		lowerText = a.getString(R.styleable.Gauge_lowerText) == null ? lowerText : fromHtml(a.getString(R.styleable.Gauge_lowerText)).toString();
 		lowerTextUnit = a.getString(R.styleable.Gauge_lowerTextUnit) == null ? lowerTextUnit : fromHtml(a.getString(R.styleable.Gauge_lowerTextUnit)).toString();
-		requestedUpperTextSize = a.getFloat(R.styleable.Gauge_upperTextSize, 0);
-		requestedLowerTextSize = a.getFloat(R.styleable.Gauge_lowerTextSize, 0);
+		requestedUpperTextSize = a.getDimension(R.styleable.Gauge_upperTextSize, 0);
+		requestedLowerTextSize = a.getDimension(R.styleable.Gauge_lowerTextSize, 0);
 		a.recycle();
 
 		initValues();
@@ -540,6 +543,16 @@ public class Gauge extends View {
 	private void drawTextCentered(String text, float x, float y, Paint paint, Canvas canvas) {
 		//float xPos = x - (paint.measureText(text)/2f);
 		float yPos = (y - ((paint.descent() + paint.ascent()) / 2f));
+
+		int color = paint.getColor();
+
+		paint.setStyle(Paint.Style.STROKE);
+		paint.setStrokeWidth(TEXT_OUTLINE_STRENGTH);
+		paint.setColor(Color.BLACK);
+		canvas.drawText(text, x, yPos, paint);
+
+		paint.setColor(color);
+		paint.setStyle(Paint.Style.FILL);
 		canvas.drawText(text, x, yPos, paint);
 	}
 
@@ -812,4 +825,23 @@ public class Gauge extends View {
 		return result;
 	}
 
+	/**
+	 * This method converts dp unit to equivalent pixels, depending on device density.
+	 *
+	 * @param dp A value in dp (density independent pixels) unit. Which we need to convert into pixels
+	 * @return A float value to represent px equivalent to dp depending on device density
+	 */
+	public static Double convertDpToPixel(double dp) {
+		return dp * ((double) Resources.getSystem().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+	}
+
+	/**
+	 * This method converts device specific pixels to density independent pixels.
+	 *
+	 * @param px A value in px (pixels) unit. Which we need to convert into db
+	 * @return A float value to represent dp equivalent to px value
+	 */
+	public static Double convertPixelsToDp(double px) {
+		return px / ((float) Resources.getSystem().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+	}
 }

@@ -6,25 +6,33 @@
         <attr name="startAngle" format="float" />
         <attr name="endAngle" format="float" />
         <attr name="majorNickInterval" format="integer" />
+        <attr name="nickLabelTextSize" format="dimension" />
+        <attr name="nickLabelTextHighlightColor" format="color" />
+        <attr name="nickLabelTextHighlightSize" format="dimension" />
+
         <attr name="minValue" format="float" />
         <attr name="maxValue" format="float" />
         <attr name="intScale" format="boolean" />
         <attr name="initialValue" format="float" />
-        <attr name="labelTextSize" format="float" />
         <attr name="faceColor" format="color" />
         <attr name="rimColor" format="color" />
         <attr name="scaleColor" format="color" />
         <attr name="needleShadow" format="boolean" />
         <attr name="needleColor" format="color" />
-        <attr name="textSize" format="float" />
+        <attr name="textSize" format="dimension" />
+
         <attr name="upperText" format="string" />
         <attr name="upperTextUnit" format="string" />
         <attr name="upperTextColor" format="color" />
-        <attr name="upperTextSize" format="float" />
+        <attr name="upperTextSize" format="dimension" />
+        <attr name="upperTextHighlightColor" format="color" />
+        <attr name="upperTextHighlightSize" format="dimension" />
         <attr name="lowerText" format="string" />
         <attr name="lowerTextUnit" format="string" />
         <attr name="lowerTextColor" format="color" />
-        <attr name="lowerTextSize" format="float" />
+        <attr name="lowerTextSize" format="dimension" />
+        <attr name="lowerTextHighlightColor" format="color" />
+        <attr name="lowerTextHighlightSize" format="dimension" />
 
     </declare-styleable>
 

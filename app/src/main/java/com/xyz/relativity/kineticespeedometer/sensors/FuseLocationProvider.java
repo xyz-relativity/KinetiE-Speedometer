@@ -36,16 +36,20 @@ public class FuseLocationProvider implements LocationListener {
 
 		this.locationManager = (LocationManager) parent
 				.getSystemService(Context.LOCATION_SERVICE);
+	}
 
+	private void initLocation() {
 		if (ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
 				&& ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 			return;
 		}
 		lastLocation = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+
 		if (lastLocation != null) {
 			updateListeners();
 		} else {
 			lastLocation = new Location(LocationManager.PASSIVE_PROVIDER);
+			lastLocation.setAccuracy(999);
 		}
 	}
 
@@ -54,6 +58,8 @@ public class FuseLocationProvider implements LocationListener {
 				&& ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 			return;
 		}
+
+		initLocation();
 
 		for (String providerStr: locationManager.getAllProviders()) {
 			if (providerStr.equalsIgnoreCase(LocationManager.PASSIVE_PROVIDER)) {
@@ -75,12 +81,10 @@ public class FuseLocationProvider implements LocationListener {
 
 	@Override
 	public void onLocationChanged(@NonNull Location location) {
-		System.out.println("NEW LOCATION " + location);
 		long compareTime = SystemClock.elapsedRealtimeNanos();
 		float oldLocationAccuracy = Math.max(0, lastLocation.getAccuracy() + TimeUnit.NANOSECONDS.toSeconds(compareTime - lastLocation.getElapsedRealtimeNanos()));
 		float newLocationAccuracy = Math.max(0, location.getAccuracy() + TimeUnit.NANOSECONDS.toSeconds(compareTime - location.getElapsedRealtimeNanos()));
 
-		System.out.println("oldAcc: " + oldLocationAccuracy + " newAcc: " + newLocationAccuracy + " swap: " + (newLocationAccuracy <= oldLocationAccuracy));
 		if (newLocationAccuracy <= oldLocationAccuracy) {
 			lastLocation = new Location(location);
 		}

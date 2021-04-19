@@ -35,7 +35,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             gauge:faceColor="#22ffffff"
-            gauge:nickLabelTextSize="16sp"
+            gauge:nickLabelTextSize="14sp"
             gauge:lowerText="test"
             gauge:lowerTextUnit="Jouls"
             gauge:lowerTextColor="#ffff0000"
@@ -51,7 +51,7 @@
         android:id="@+id/chart"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="0.4"
+        android:layout_weight="0.3"
         android:background="#00ffffff"
 
         />

@@ -32,7 +32,7 @@ import androidx.annotation.ColorInt;
  * @since 2017-01-07
  */
 public class Gauge extends View {
-	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(5).floatValue();
+	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(3).floatValue();
 	private IGaugeNick gaugeNick = new IGaugeNick() {
 		@Override
 		public int getNicColor(int nick, float value) {

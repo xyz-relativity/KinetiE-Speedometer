@@ -46,6 +46,7 @@ import de.nitri.gauge.IGaugeNick;
 public class MainActivity extends AppCompatActivity implements ILocationListener {
 	private DeviceLocationManager locationManager;
 
+	private static final String ODOMETER_FORMAT = "%011.02f km";
 	private static final float MASS_KG = 1;
 	private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
 	private static final float G_UNIT_CONVERSION = 0.10197162129779f;
@@ -62,18 +63,20 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int) TimeUnit.SECONDS.toMillis(1) / GRAPH_UPDATE_INTERVAL_MILLISECONDS);
 
 	private LineChart chart;
+	private TextView odometerView;
 	Timer timer = new Timer();
 
 	float prevSpeed = 0;
 	float prevTime = 0;
-	float targetSpeed = 0;
+	float targetSpeedMps = 0;
 	float speedStep = 0;
 	float deltaLeft = 0;
-	float currentSpeed = targetSpeed;
+	float currentSpeedMps = targetSpeedMps;
 
 	long startTime = System.currentTimeMillis();
 	private Gauge gaugeView;
 	private boolean isRunning = false;
+	private static double odometerMeters = 0;
 
 	enum LineGraphs {
 		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
@@ -145,22 +148,24 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 				if (deltaLeft <= Math.abs(speedStep)) {
 					speedStep = 0;
-					currentSpeed = targetSpeed;
+					currentSpeedMps = targetSpeedMps;
 					deltaLeft = 0;
 				} else {
-					currentSpeed = currentSpeed + speedStep;
+					currentSpeedMps = currentSpeedMps + speedStep;
 					deltaLeft = deltaLeft - Math.abs(speedStep);
 				}
 
 				float dt = (time - prevTime) / 1000;
 				Float acceleration = null;
 				if (dt != 0) {
-					acceleration = ((currentSpeed - prevSpeed) / dt) * G_UNIT_CONVERSION;
+					acceleration = ((currentSpeedMps - prevSpeed) / dt) * G_UNIT_CONVERSION;
 				}
 
-				updateUi(time, currentSpeed * 3.6f, (ONE_HALF_MASS_KG * currentSpeed * currentSpeed), acceleration);
+				odometerMeters = odometerMeters + (dt * currentSpeedMps);
+
+				updateUi(time, currentSpeedMps * 3.6f, (ONE_HALF_MASS_KG * currentSpeedMps * currentSpeedMps), acceleration);
 				prevTime = time;
-				prevSpeed = currentSpeed;
+				prevSpeed = currentSpeedMps;
 			}
 		}, 0, GRAPH_UPDATE_INTERVAL_MILLISECONDS);
 	}
@@ -201,6 +206,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void initGauge() {
+		odometerView = findViewById(R.id.odometer);
 		gaugeView = findViewById(R.id.gauge);
 		gaugeView.setMinValue(0);
 		gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
@@ -312,9 +318,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	public void updatePosition(Location location) {
 		if (location.hasSpeed()) {
-			targetSpeed = location.getSpeed();
-			deltaLeft = Math.abs(targetSpeed - currentSpeed);
-			speedStep = (targetSpeed - currentSpeed) / 10f;
+			targetSpeedMps = location.getSpeed();
+			deltaLeft = Math.abs(targetSpeedMps - currentSpeedMps);
+			speedStep = (targetSpeedMps - currentSpeedMps) / 10f;
 		}
 	}
 
@@ -339,6 +345,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				data.notifyDataChanged();
 
 				if (isRunning) {
+					odometerView.setText(String.format(Locale.getDefault(), ODOMETER_FORMAT, odometerMeters/1000));
+
 					chart.notifyDataSetChanged();
 
 					gaugeView.moveToValue(energy);
@@ -429,7 +437,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	protected void onPause() {
 		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		locationManager.onPause();
+//		locationManager.onPause();
 		isRunning = false;
 		super.onPause();
 	}

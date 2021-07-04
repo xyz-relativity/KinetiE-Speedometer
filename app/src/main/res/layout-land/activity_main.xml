@@ -26,24 +26,44 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <de.nitri.gauge.Gauge
-            android:id="@+id/gauge"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            gauge:faceColor="#22ffffff"
-            gauge:nickLabelTextSize="14sp"
-            gauge:lowerText="test"
-            gauge:lowerTextUnit="Jouls"
-            gauge:lowerTextColor="#ffff0000"
-            gauge:rimColor="#22ffffff"
-            gauge:scaleColor="#ff00ff00"
-            gauge:upperText="100"
-            gauge:upperTextUnit="Km/h"
-            gauge:upperTextColor="#ff00ff00" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <de.nitri.gauge.Gauge
+                android:id="@+id/gauge"
+                android:layout_weight="1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                gauge:faceColor="#22ffffff"
+                gauge:nickLabelTextSize="14sp"
+                gauge:lowerText="test"
+                gauge:lowerTextColor="#ffff0000"
+                gauge:lowerTextUnit="Jouls"
+                gauge:rimColor="#22ffffff"
+                gauge:scaleColor="#ff00ff00"
+                gauge:upperText="100"
+                gauge:upperTextColor="#ff00ff00"
+                gauge:upperTextUnit="Km/h" />
+
+            <TextView
+                android:id="@+id/odometer"
+                android:layout_weight="0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAlignment="center"
+                android:textStyle="bold"
+                android:textColor="#ff00ff00"
+                android:text="00000000.00 km"
+                />
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

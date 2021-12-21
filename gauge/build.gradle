@@ -3,12 +3,12 @@ apply plugin: 'com.android.library'
 group = 'com.github.Pygmalion69'
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
     buildToolsVersion "28.0.3"
 
     defaultConfig {
         minSdkVersion 16
-        targetSdkVersion 30
+        targetSdkVersion 31
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
@@ -29,6 +29,6 @@ dependencies {
     androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
     testImplementation 'junit:junit:4.13.2'
 }

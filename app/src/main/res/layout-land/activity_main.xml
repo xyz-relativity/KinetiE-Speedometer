@@ -68,7 +68,7 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/chart"
+        android:id="@+id/historyChart"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="0.3"

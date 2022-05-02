@@ -3,6 +3,7 @@ package com.xyz.relativity.kineticespeedometer;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
@@ -76,11 +77,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	long startTime = System.currentTimeMillis();
 	private Gauge gaugeView;
 	private boolean isRunning = false;
-	private static double odometerMeters = 0;
+	private double odometerMeters;
+	private SharedPreferences settings;
 
 	enum LineGraphs {
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.rgb(200, 200, 255), 0.5f, YAxis.AxisDependency.LEFT),
-		SPEED(R.string.speed_label, R.string.speed_unit, Color.rgb(0, 255, 0), 2f, YAxis.AxisDependency.RIGHT),
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.rgb(200, 200, 255), 1f, YAxis.AxisDependency.LEFT),
+		SPEED(R.string.speed_label, R.string.speed_unit, Color.rgb(50, 200, 50), 3f, YAxis.AxisDependency.RIGHT),
 		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.rgb(255, 255, 0), 1f, YAxis.AxisDependency.RIGHT);
 
 		public int label;
@@ -104,8 +106,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	@Override
+	protected void onStart() {
+		super.onStart();
+		odometerMeters = settings.getFloat("odometer", 0);
+	}
+
+	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		settings = getSharedPreferences("configs", 0);
 
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -171,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void initChart() {
-		chart = findViewById(R.id.chart);
+		chart = findViewById(R.id.historyChart);
 
 		chart.setAutoScaleMinMaxEnabled(true);
 		chart.setDrawGridBackground(false);
@@ -389,7 +399,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void prepareSpeedEnergyAxis(YAxis axis) {
-		axis.setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
+		axis.setGridColor(getThemeColor(MainActivity.this, android.R.attr.color));
 		axis.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		axis.setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		axis.setAxisMinimum(0);
@@ -436,6 +446,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	protected void onPause() {
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putFloat("odometer", (float) odometerMeters);
+		editor.apply();
+
 		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 //		locationManager.onPause();
 		isRunning = false;

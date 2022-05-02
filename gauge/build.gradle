@@ -4,7 +4,6 @@ group = 'com.github.Pygmalion69'
 
 android {
     compileSdkVersion 31
-    buildToolsVersion "28.0.3"
 
     defaultConfig {
         minSdkVersion 16
@@ -19,7 +18,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    lintOptions {
+    lint {
         abortOnError false
     }
 }
@@ -29,6 +28,6 @@ dependencies {
     androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.4.1'
     testImplementation 'junit:junit:4.13.2'
 }

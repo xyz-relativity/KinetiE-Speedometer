@@ -177,8 +177,8 @@ public class Gauge extends View {
 		intScale = a.getBoolean(R.styleable.Gauge_intScale, intScale);
 		initialValue = a.getFloat(R.styleable.Gauge_initialValue, initialValue);
 		requestedLabelTextSize = a.getDimension(R.styleable.Gauge_nickLabelTextSize, requestedLabelTextSize);
-		faceColor = a.getColor(R.styleable.Gauge_faceColor, Color.argb(0xff, 0xff, 0xff, 0xff));
-		rimColor = a.getColor(R.styleable.Gauge_rimColor, Color.argb(0x4f, 0x33, 0x36, 0x33));
+		faceColor = a.getColor(R.styleable.Gauge_faceColor, 0xffffffff);
+		rimColor = a.getColor(R.styleable.Gauge_rimColor, 0x4f333633);
 		scaleColor = a.getColor(R.styleable.Gauge_scaleColor, 0x9f004d0f);
 		upperTextColor = a.getColor(R.styleable.Gauge_upperTextColor, 0x9f004d0f);
 		lowerTextColor = a.getColor(R.styleable.Gauge_lowerTextColor, 0x9f004d0f);

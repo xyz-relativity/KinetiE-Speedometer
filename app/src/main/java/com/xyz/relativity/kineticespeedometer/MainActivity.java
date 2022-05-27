@@ -329,9 +329,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	public void updatePosition(Location location) {
 		if (location.hasSpeed()) {
 			targetSpeedMps = location.getSpeed();
-			deltaLeft = Math.abs(targetSpeedMps - currentSpeedMps);
-			speedStep = (targetSpeedMps - currentSpeedMps) / 10f;
+		} else {
+			targetSpeedMps = 0;
 		}
+
+		deltaLeft = Math.abs(targetSpeedMps - currentSpeedMps);
+		speedStep = (targetSpeedMps - currentSpeedMps) / 10f;
 	}
 
 	private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {

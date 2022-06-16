@@ -30,6 +30,8 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.xyz.relativity.kineticespeedometer.sensors.DeviceLocationManager;
 import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -328,7 +330,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	public void updatePosition(Location location) {
 		if (location.hasSpeed()) {
-			targetSpeedMps = location.getSpeed();
+			targetSpeedMps = (location.getSpeed() > 0.1)?location.getSpeed():0;
 		} else {
 			targetSpeedMps = 0;
 		}
@@ -386,7 +388,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		xAxis.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		xAxis.setGridColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		xAxis.setValueFormatter(new ValueFormatter() {
-			SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+			final SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
 
 			@Override
 			public String getFormattedValue(float value) {
@@ -399,6 +401,18 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		axis.setGridColor(LineGraphs.ACCELERATION.color);
 		axis.setTextColor(LineGraphs.ACCELERATION.color);
 		axis.setAxisLineColor(LineGraphs.ACCELERATION.color);
+		axis.setValueFormatter(new ValueFormatter() {
+			final NumberFormat formatter = NumberFormat.getInstance(Locale.getDefault());
+			{
+				formatter.setMaximumFractionDigits(4);
+				formatter.setRoundingMode(RoundingMode.HALF_UP);
+			}
+
+			@Override
+			public String getFormattedValue(float value) {
+				return formatter.format(value);
+			}
+		});
 	}
 
 	private void prepareSpeedEnergyAxis(YAxis axis) {
@@ -406,6 +420,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		axis.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		axis.setAxisLineColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 		axis.setAxisMinimum(0);
+		axis.setValueFormatter(new ValueFormatter() {
+			final NumberFormat formatter = NumberFormat.getInstance(Locale.getDefault());
+			{
+				formatter.setMaximumFractionDigits(2);
+				formatter.setRoundingMode(RoundingMode.HALF_UP);
+			}
+			@Override
+			public String getFormattedValue(float value) {
+				return formatter.format(value);
+			}
+		});
 	}
 
 	private LineData buildLineData() {

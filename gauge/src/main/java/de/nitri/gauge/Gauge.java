@@ -98,8 +98,8 @@ public class Gauge extends View {
 	private RectF scaleRect;
 
 	private int totalNicks = 120;
-	private float startAngle = 10;
-	private float endAngle = 350;
+	private float startAngle = 20;
+	private float endAngle = 340;
 	private float degreesPerNick = (endAngle - startAngle) / totalNicks;
 	private float valuePerNick = 10;
 	private float minValue = 0;
@@ -133,15 +133,19 @@ public class Gauge extends View {
 	private int lowerTextColor;
 	private int needleColor;
 	private Paint upperTextPaint;
+	private Paint upperTextUnitPaint;
 	private Paint lowerTextPaint;
+	private Paint lowerTextUnitPaint;
 
 	private float requestedTextSize = 0;
 	private float requestedUpperTextSize = 0;
+	private float requestedUpperUnitTextSize = 0;
 	private float requestedLowerTextSize = 0;
-	private String upperText = "";
-	private String upperTextUnit = "";
-	private String lowerText = "";
-	private String lowerTextUnit = "";
+	private float requestedLowerUnitTextSize = 0;
+	private String upperText = "upper";
+	private String upperTextUnit = "upper unit";
+	private String lowerText = "lower";
+	private String lowerTextUnit = "lower unit";
 
 	private float textScaleFactor;
 
@@ -190,7 +194,9 @@ public class Gauge extends View {
 		lowerText = a.getString(R.styleable.Gauge_lowerText) == null ? lowerText : fromHtml(a.getString(R.styleable.Gauge_lowerText)).toString();
 		lowerTextUnit = a.getString(R.styleable.Gauge_lowerTextUnit) == null ? lowerTextUnit : fromHtml(a.getString(R.styleable.Gauge_lowerTextUnit)).toString();
 		requestedUpperTextSize = a.getDimension(R.styleable.Gauge_upperTextSize, 0);
+		requestedUpperUnitTextSize = a.getDimension(R.styleable.Gauge_upperTextSize, 0);
 		requestedLowerTextSize = a.getDimension(R.styleable.Gauge_lowerTextSize, 0);
+		requestedLowerUnitTextSize = a.getDimension(R.styleable.Gauge_lowerTextSize, 0);
 		a.recycle();
 
 		initValues();
@@ -267,12 +273,26 @@ public class Gauge extends View {
 		upperTextPaint.setTypeface(Typeface.SANS_SERIF);
 		upperTextPaint.setTextAlign(Paint.Align.CENTER);
 
+		upperTextUnitPaint = new Paint();
+		upperTextUnitPaint.setColor(upperTextColor);
+		upperTextUnitPaint.setSubpixelText(true);
+		upperTextUnitPaint.setAntiAlias(true);
+		upperTextUnitPaint.setTypeface(Typeface.SANS_SERIF);
+		upperTextUnitPaint.setTextAlign(Paint.Align.CENTER);
+
 		lowerTextPaint = new Paint();
 		lowerTextPaint.setColor(lowerTextColor);
 		lowerTextPaint.setSubpixelText(true);
 		lowerTextPaint.setAntiAlias(true);
 		lowerTextPaint.setTypeface(Typeface.SANS_SERIF);
 		lowerTextPaint.setTextAlign(Paint.Align.CENTER);
+
+		lowerTextUnitPaint = new Paint();
+		lowerTextUnitPaint.setColor(lowerTextColor);
+		lowerTextUnitPaint.setSubpixelText(true);
+		lowerTextUnitPaint.setAntiAlias(true);
+		lowerTextUnitPaint.setTypeface(Typeface.SANS_SERIF);
+		lowerTextUnitPaint.setTextAlign(Paint.Align.CENTER);
 
 		needlePaint = new Paint();
 		needlePaint.setColor(needleColor);
@@ -343,20 +363,20 @@ public class Gauge extends View {
 			canvas.save();
 
 			float value = i * valuePerNick;
-			canvas.rotate(i * degreesPerNick + 180 + startAngle, 0.5f * canvasWidth, 0.5f * canvasHeight);
+			canvas.rotate(i * degreesPerNick + 180 + startAngle, canvasCenterX, canvasCenterY);
 
 			if (gaugeNick.shouldDrawMajorNick(i, value)) {
 				scalePaint.setColor(gaugeNick.getMajorNicColor(i, value));
-				canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y3, scalePaint);
+				canvas.drawLine(canvasCenterX, y1, canvasCenterX, y3, scalePaint);
 			}
 
 			if (gaugeNick.shouldDrawHalfNick(i, value)) {
 				scalePaint.setColor(gaugeNick.getHalfNicColor(i, value));
-				canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y4, scalePaint);
+				canvas.drawLine(canvasCenterX, y1, canvasCenterX, y4, scalePaint);
 			}
 
 			scalePaint.setColor(gaugeNick.getNicColor(i, value));
-			canvas.drawLine(0.5f * canvasWidth, y1, 0.5f * canvasWidth, y2, scalePaint);
+			canvas.drawLine(canvasCenterX, y1, canvasCenterX, y2, scalePaint);
 
 			canvas.restore();
 			drawLabels(canvas, i);
@@ -377,10 +397,10 @@ public class Gauge extends View {
 	}
 
 	private void drawTexts(Canvas canvas) {
-		drawTextCentered(upperText, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f), upperTextPaint, canvas);
-		drawTextCentered(upperTextUnit, upperTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY - (canvasHeight / 6.5f) - upperTextPaint.getTextSize(), upperTextPaint, canvas);
-		drawTextCentered(lowerText, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f), lowerTextPaint, canvas);
-		drawTextCentered(lowerTextUnit, lowerTextPaint.getTextSize() / 2, true, canvasCenterX, canvasCenterY + (canvasHeight / 6.5f) + upperTextPaint.getTextSize(), lowerTextPaint, canvas);
+		drawTextCentered(upperText, canvasCenterX, canvasCenterY - canvasCenterY / 4, upperTextPaint, canvas);
+		drawTextCentered(upperTextUnit, upperTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - upperTextUnitPaint.getTextSize(), upperTextUnitPaint, canvas);
+		drawTextCentered(lowerText, canvasCenterX, canvasCenterY + canvasCenterY / 4, lowerTextPaint, canvas);
+		drawTextCentered(lowerTextUnit, lowerTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - lowerTextUnitPaint.getTextSize() / 2, lowerTextUnitPaint, canvas);
 	}
 
 	@Override
@@ -452,7 +472,9 @@ public class Gauge extends View {
 			textSize = canvasWidth / 14f;
 		}
 		upperTextPaint.setTextSize(requestedUpperTextSize > 0 ? requestedUpperTextSize * textScaleFactor : textSize);
+		upperTextUnitPaint.setTextSize(requestedUpperUnitTextSize > 0 ? requestedUpperUnitTextSize * textScaleFactor : textSize);
 		lowerTextPaint.setTextSize(requestedLowerTextSize > 0 ? requestedLowerTextSize * textScaleFactor : textSize);
+		lowerTextUnitPaint.setTextSize(requestedLowerUnitTextSize > 0 ? requestedLowerUnitTextSize * textScaleFactor : textSize);
 
 		super.onSizeChanged(w, h, oldw, oldh);
 	}

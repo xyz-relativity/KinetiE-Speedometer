@@ -25,12 +25,14 @@
         <attr name="upperTextUnit" format="string" />
         <attr name="upperTextColor" format="color" />
         <attr name="upperTextSize" format="dimension" />
+        <attr name="upperTextUnitSize" format="dimension" />
         <attr name="upperTextHighlightColor" format="color" />
         <attr name="upperTextHighlightSize" format="dimension" />
         <attr name="lowerText" format="string" />
         <attr name="lowerTextUnit" format="string" />
         <attr name="lowerTextColor" format="color" />
         <attr name="lowerTextSize" format="dimension" />
+        <attr name="lowerTextUnitSize" format="dimension" />
         <attr name="lowerTextHighlightColor" format="color" />
         <attr name="lowerTextHighlightSize" format="dimension" />
 

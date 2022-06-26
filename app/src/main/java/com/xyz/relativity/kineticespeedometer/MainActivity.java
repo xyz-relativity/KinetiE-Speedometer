@@ -224,10 +224,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		gaugeView.setMaxValue(GAUGE_MAX_ENERGY);
 		gaugeView.setTotalNicks(GAUGE_NICK_COUNT);
 
-		gaugeView.setUpperTextUnit(getString(LineGraphs.ENERGY.unit));
-		gaugeView.setUpperTextColor(LineGraphs.ENERGY.color);
-		gaugeView.setLowerTextUnit(getString(LineGraphs.SPEED.unit));
-		gaugeView.setLowerTextColor(LineGraphs.SPEED.color);
+		gaugeView.setUpperTextUnit(getString(LineGraphs.SPEED.unit));
+		gaugeView.setUpperTextColor(LineGraphs.SPEED.color);
+		gaugeView.setUpperTextSize(140);
+		gaugeView.setLowerTextUnit(getString(LineGraphs.ENERGY.unit));
+		gaugeView.setLowerTextColor(LineGraphs.ENERGY.color);
+		gaugeView.setLowerTextSize(100);
 
 		float valuePerNick = (GAUGE_MAX_ENERGY) / (float) GAUGE_NICK_COUNT;
 
@@ -330,7 +332,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	public void updatePosition(Location location) {
 		if (location.hasSpeed()) {
-			targetSpeedMps = (location.getSpeed() > 0.1)?location.getSpeed():0;
+			targetSpeedMps = (location.getSpeed() > 0.25)?location.getSpeed():0;
 		} else {
 			targetSpeedMps = 0;
 		}
@@ -365,8 +367,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 					chart.notifyDataSetChanged();
 
 					gaugeView.moveToValue(energy);
-					gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", speed));
-					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", energy));
+					gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
+					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
 
 					chart.invalidate();
 				}

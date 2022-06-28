@@ -3,6 +3,7 @@ package de.nitri.gauge;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -570,11 +571,13 @@ public class Gauge extends View {
 
 		paint.setStyle(Paint.Style.STROKE);
 		paint.setStrokeWidth(TEXT_OUTLINE_STRENGTH);
+		paint.setMaskFilter(new BlurMaskFilter(8, BlurMaskFilter.Blur.NORMAL));
 		paint.setColor(Color.BLACK);
 		canvas.drawText(text, x, yPos, paint);
 
 		paint.setColor(color);
 		paint.setStyle(Paint.Style.FILL);
+		paint.setMaskFilter(null);
 		canvas.drawText(text, x, yPos, paint);
 	}
 

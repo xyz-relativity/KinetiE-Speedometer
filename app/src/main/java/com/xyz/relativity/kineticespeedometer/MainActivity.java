@@ -53,10 +53,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final float MASS_KG = 1;
 	private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
 	private static final float G_UNIT_CONVERSION = 0.10197162129779f;
-	private static final float GAUGE_MAX_SPEED_KH = 200;
+	private static final float GAUGE_MAX_SPEED_KH = 220;
 	private static final float MAX_SPEED_MS = (GAUGE_MAX_SPEED_KH / 3.6f); // convert to meters per second.
 	private static final int GAUGE_MAX_ENERGY = Math.round(ONE_HALF_MASS_KG * MAX_SPEED_MS * MAX_SPEED_MS);
-	private static final int GAUGE_NICK_COUNT = 200;
+	private static final int GAUGE_NICK_COUNT = (int)GAUGE_MAX_SPEED_KH;
 	private static final int MAJOR_NICK_FOR_SPEED = 20;
 	private static final int MINOR_NICK_FOR_SPEED = 10;
 	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
@@ -229,7 +229,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		gaugeView.setUpperTextSize(140);
 		gaugeView.setLowerTextUnit(getString(LineGraphs.ENERGY.unit));
 		gaugeView.setLowerTextColor(LineGraphs.ENERGY.color);
-		gaugeView.setLowerTextSize(100);
+		gaugeView.setLowerTextSize(80);
 
 		float valuePerNick = (GAUGE_MAX_ENERGY) / (float) GAUGE_NICK_COUNT;
 

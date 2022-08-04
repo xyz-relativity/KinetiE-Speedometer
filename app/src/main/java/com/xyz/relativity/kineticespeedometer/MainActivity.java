@@ -407,7 +407,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			final NumberFormat formatter = NumberFormat.getInstance(Locale.getDefault());
 			{
 				formatter.setMaximumFractionDigits(4);
-				formatter.setRoundingMode(RoundingMode.HALF_UP);
+				formatter.setRoundingMode(RoundingMode.HALF_EVEN);
 			}
 
 			@Override

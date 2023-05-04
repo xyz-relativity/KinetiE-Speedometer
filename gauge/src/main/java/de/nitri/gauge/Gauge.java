@@ -33,7 +33,8 @@ import androidx.annotation.ColorInt;
  * @since 2017-01-07
  */
 public class Gauge extends View {
-	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(3).floatValue();
+	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(2).floatValue();
+	private static final int TEXT_OUTLINE_COLOR = Color.CYAN;
 	private IGaugeNick gaugeNick = new IGaugeNick() {
 		@Override
 		public int getNicColor(int nick, float value) {
@@ -258,6 +259,7 @@ public class Gauge extends View {
 
 		scalePaint.setAntiAlias(true);
 		scalePaint.setColor(scaleColor);
+		scalePaint.setMaskFilter(new BlurMaskFilter(0.5f, BlurMaskFilter.Blur.NORMAL));
 
 		labelPaint = new Paint();
 		labelPaint.setColor(scaleColor);
@@ -571,8 +573,8 @@ public class Gauge extends View {
 
 		paint.setStyle(Paint.Style.STROKE);
 		paint.setStrokeWidth(TEXT_OUTLINE_STRENGTH);
-		paint.setMaskFilter(new BlurMaskFilter(8, BlurMaskFilter.Blur.NORMAL));
-		paint.setColor(Color.BLACK);
+		paint.setMaskFilter(new BlurMaskFilter(paint.getTextSize()/3, BlurMaskFilter.Blur.NORMAL));
+		paint.setColor(color);
 		canvas.drawText(text, x, yPos, paint);
 
 		paint.setColor(color);
@@ -839,7 +841,6 @@ public class Gauge extends View {
 		if (valid) Log.i(TAG, getResources().getString(R.string.scale_ok));
 	}
 
-	@SuppressWarnings("deprecation")
 	private static Spanned fromHtml(String html) {
 		Spanned result;
 		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {

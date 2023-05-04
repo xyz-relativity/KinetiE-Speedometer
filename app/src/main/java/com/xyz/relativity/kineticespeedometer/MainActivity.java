@@ -83,16 +83,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private SharedPreferences settings;
 
 	enum LineGraphs {
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#c8c8ff"), 1f, YAxis.AxisDependency.LEFT),
-		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#00ff00"), 3f, YAxis.AxisDependency.RIGHT),
-		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffff00"), 1f, YAxis.AxisDependency.RIGHT);
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ffc8c8ff"), 1f, YAxis.AxisDependency.LEFT),
+		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), 3f, YAxis.AxisDependency.RIGHT),
+		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), 1.5f, YAxis.AxisDependency.RIGHT);
 
-		public int label;
-		public int unit;
-		public int color;
-		public float lineSize;
-		public YAxis.AxisDependency dependency;
-		public List<Entry> container = new CopyOnWriteArrayList<>();
+		public final int label;
+		public final int unit;
+		public final int color;
+		public final float lineSize;
+		public final YAxis.AxisDependency dependency;
 
 		LineGraphs(int label, int unit, int color, float lineSize, YAxis.AxisDependency dependency) {
 			this.label = label;

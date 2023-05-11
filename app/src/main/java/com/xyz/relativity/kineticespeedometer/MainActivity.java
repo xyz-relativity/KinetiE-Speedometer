@@ -96,8 +96,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	enum LineGraphs {
 		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), convertDpToPixel(1).floatValue(), YAxis.AxisDependency.RIGHT),
-		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.75).floatValue(), YAxis.AxisDependency.RIGHT),
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.4).floatValue(), YAxis.AxisDependency.LEFT);
+		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.5).floatValue(), YAxis.AxisDependency.RIGHT),
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.3).floatValue(), YAxis.AxisDependency.LEFT);
 
 		public final int label;
 		public final int unit;

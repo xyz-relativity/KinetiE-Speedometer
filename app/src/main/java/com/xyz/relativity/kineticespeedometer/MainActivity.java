@@ -15,6 +15,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -33,6 +34,7 @@ import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +50,9 @@ import de.nitri.gauge.IGaugeNick;
 
 public class MainActivity extends AppCompatActivity implements ILocationListener {
 	private DeviceLocationManager locationManager;
+
+	private static final String SAVED_GRAPH_DATA = "GRAPH_DATA";
+	private static final String SAVED_START_TIME = "START_TIME";
 
 	private static final String ODOMETER_FORMAT = "%011.02f km";
 	private static final float MASS_KG = 1;
@@ -107,6 +112,52 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	@Override
+	public void onSaveInstanceState(@NonNull Bundle savedInstanceState){
+		super.onSaveInstanceState(savedInstanceState);
+
+		savedInstanceState.putLong(SAVED_START_TIME, startTime);
+
+		for (LineGraphs graph: LineGraphs.values()) {
+			ILineDataSet dataSet = chart.getData().getDataSets().get(graph.ordinal());
+			savedInstanceState.putString(SAVED_GRAPH_DATA + "_" + graph.name(), dataSet.toString());
+		}
+	}
+
+	@Override
+	public void onRestoreInstanceState(Bundle savedInstanceState) {
+		super.onRestoreInstanceState(savedInstanceState);
+
+		startTime = savedInstanceState.getLong(SAVED_START_TIME);
+
+		Map<Integer, List<Float>> dataMap = new HashMap<>();
+
+		for (LineGraphs graph: LineGraphs.values()) {
+			String data = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + graph.name());
+			String[] dataSplit = data.split("Entry,");
+			List<Float> dataList = new ArrayList<>();
+			List<Float> xData = new ArrayList<>();
+			for (int i = 1; i < dataSplit.length; ++i) {
+				xData.add(Float.parseFloat(dataSplit[i].trim().split(" ")[1]));
+				dataList.add(Float.parseFloat(dataSplit[i].trim().split(" ")[3]));
+			}
+
+			if (!dataMap.containsKey(-1)) {
+				dataMap.put(-1, xData);
+			}
+
+			dataMap.put(graph.ordinal(), dataList);
+		}
+
+		for (int i = 0; i < dataMap.get(-1).size(); ++i) {
+			updateUi(dataMap.get(-1).get(i),
+					dataMap.get(LineGraphs.SPEED.ordinal()).get(i),
+					dataMap.get(LineGraphs.ENERGY.ordinal()).get(i),
+					dataMap.get(LineGraphs.ACCELERATION.ordinal()).get(i)
+					);
+		}
+	}
+
+	@Override
 	protected void onStart() {
 		super.onStart();
 		odometerMeters = settings.getFloat("odometer", 0);
@@ -118,7 +169,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		settings = getSharedPreferences("configs", 0);
 
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setContentView(R.layout.activity_main);

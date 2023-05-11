@@ -23,6 +23,7 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.ColorInt;
+import androidx.core.graphics.ColorUtils;
 
 /**
  * A Gauge View on Android
@@ -34,7 +35,8 @@ import androidx.annotation.ColorInt;
  */
 public class Gauge extends View {
 	private static final float TEXT_OUTLINE_STRENGTH = convertDpToPixel(2).floatValue();
-	private static final int TEXT_OUTLINE_COLOR = Color.CYAN;
+	private static final float TEXT_GLOW_STRENGTH = convertDpToPixel(2.5).floatValue();
+	private static final float TEXT_GLOW_BLUR_RATIO = 0.5f;
 	private IGaugeNick gaugeNick = new IGaugeNick() {
 		@Override
 		public int getNicColor(int nick, float value) {
@@ -403,7 +405,7 @@ public class Gauge extends View {
 		drawTextCentered(upperText, canvasCenterX, canvasCenterY - canvasCenterY / 4, upperTextPaint, canvas);
 		drawTextCentered(upperTextUnit, upperTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - upperTextUnitPaint.getTextSize(), upperTextUnitPaint, canvas);
 		drawTextCentered(lowerText, canvasCenterX, canvasCenterY + canvasCenterY / 4, lowerTextPaint, canvas);
-		drawTextCentered(lowerTextUnit, lowerTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - lowerTextUnitPaint.getTextSize() / 2, lowerTextUnitPaint, canvas);
+		drawTextCentered(lowerTextUnit, lowerTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - lowerTextUnitPaint.getTextSize() * 0.4f, lowerTextUnitPaint, canvas);
 	}
 
 	@Override
@@ -571,12 +573,24 @@ public class Gauge extends View {
 
 		int color = paint.getColor();
 
+		//draw glow
 		paint.setStyle(Paint.Style.STROKE);
-		paint.setStrokeWidth(TEXT_OUTLINE_STRENGTH);
-		paint.setMaskFilter(new BlurMaskFilter(paint.getTextSize()/3, BlurMaskFilter.Blur.NORMAL));
+		paint.setStrokeWidth(TEXT_GLOW_STRENGTH);
+		paint.setMaskFilter(new BlurMaskFilter(paint.getTextSize() * TEXT_GLOW_BLUR_RATIO, BlurMaskFilter.Blur.NORMAL));
 		paint.setColor(color);
 		canvas.drawText(text, x, yPos, paint);
 
+		//draw outline
+		paint.setStrokeWidth(TEXT_OUTLINE_STRENGTH);
+		paint.setMaskFilter(null);
+		if (ColorUtils.calculateLuminance(color) > 0.5) {
+			paint.setColor(Color.DKGRAY);
+		} else {
+			paint.setColor(Color.LTGRAY);
+		}
+		canvas.drawText(text, x, yPos, paint);
+
+		//draw text
 		paint.setColor(color);
 		paint.setStyle(Paint.Style.FILL);
 		paint.setMaskFilter(null);

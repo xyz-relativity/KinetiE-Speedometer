@@ -94,9 +94,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private SharedPreferences settings;
 
 	enum LineGraphs {
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ffc8c8ff"), 1f, YAxis.AxisDependency.LEFT),
 		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), 3f, YAxis.AxisDependency.RIGHT),
-		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), 1.5f, YAxis.AxisDependency.RIGHT);
+		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), 1.5f, YAxis.AxisDependency.RIGHT),
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#aaff5500"), 0.5f, YAxis.AxisDependency.LEFT);
+
 
 		public final int label;
 		public final int unit;

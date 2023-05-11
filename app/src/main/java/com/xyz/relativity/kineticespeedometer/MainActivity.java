@@ -53,6 +53,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	private static final String SAVED_GRAPH_DATA = "GRAPH_DATA";
 	private static final String SAVED_START_TIME = "START_TIME";
+	private static final String SAVED_PREV_SPEED = "PREV_SPEED";
+	private static final String SAVED_PREV_TIME = "PREV_TIME";
+	private static final String SAVED_TARGET_SPEED = "TARGET_SPEED";
+	private static final String SAVED_CURRENT_SPEED = "CURRENT_SPEED";
+	private static final String SAVED_SPEED_STEP = "SPEED_STEP";
+	private static final String SAVED_DELTA_LEFT = "DELTA_LEFT";
 
 	private static final String ODOMETER_FORMAT = "%011.02f km";
 	private static final float MASS_KG = 1;
@@ -74,14 +80,14 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private TextView odometerView;
 	Timer timer = new Timer();
 
+	long startTime = System.currentTimeMillis();
 	float prevSpeed = 0;
 	float prevTime = 0;
 	float targetSpeedMps = 0;
+	float currentSpeedMps = targetSpeedMps;
 	float speedStep = 0;
 	float deltaLeft = 0;
-	float currentSpeedMps = targetSpeedMps;
 
-	long startTime = System.currentTimeMillis();
 	private Gauge gaugeView;
 	private boolean isRunning = false;
 	private double odometerMeters;
@@ -116,6 +122,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		super.onSaveInstanceState(savedInstanceState);
 
 		savedInstanceState.putLong(SAVED_START_TIME, startTime);
+		savedInstanceState.putFloat(SAVED_PREV_SPEED, prevSpeed);
+		savedInstanceState.putFloat(SAVED_PREV_TIME, prevTime);
+		savedInstanceState.putFloat(SAVED_TARGET_SPEED, targetSpeedMps);
+		savedInstanceState.putFloat(SAVED_CURRENT_SPEED, currentSpeedMps);
+		savedInstanceState.putFloat(SAVED_SPEED_STEP, speedStep);
+		savedInstanceState.putFloat(SAVED_DELTA_LEFT, deltaLeft);
 
 		for (LineGraphs graph: LineGraphs.values()) {
 			ILineDataSet dataSet = chart.getData().getDataSets().get(graph.ordinal());
@@ -128,32 +140,23 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		super.onRestoreInstanceState(savedInstanceState);
 
 		startTime = savedInstanceState.getLong(SAVED_START_TIME);
+		prevSpeed = savedInstanceState.getFloat(SAVED_PREV_SPEED);
+		prevTime = savedInstanceState.getFloat(SAVED_PREV_TIME);
+		targetSpeedMps = savedInstanceState.getFloat(SAVED_TARGET_SPEED);
+		currentSpeedMps = savedInstanceState.getFloat(SAVED_CURRENT_SPEED);
+		speedStep = savedInstanceState.getFloat(SAVED_SPEED_STEP);
+		deltaLeft = savedInstanceState.getFloat(SAVED_DELTA_LEFT);
 
-		Map<Integer, List<Float>> dataMap = new HashMap<>();
+		String[] speedSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.SPEED.name()).split("Entry,");
+		String[] energySplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ENERGY.name()).split("Entry,");
+		String[] accelerationSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ACCELERATION.name()).split("Entry,");
 
-		for (LineGraphs graph: LineGraphs.values()) {
-			String data = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + graph.name());
-			String[] dataSplit = data.split("Entry,");
-			List<Float> dataList = new ArrayList<>();
-			List<Float> xData = new ArrayList<>();
-			for (int i = 1; i < dataSplit.length; ++i) {
-				xData.add(Float.parseFloat(dataSplit[i].trim().split(" ")[1]));
-				dataList.add(Float.parseFloat(dataSplit[i].trim().split(" ")[3]));
-			}
-
-			if (!dataMap.containsKey(-1)) {
-				dataMap.put(-1, xData);
-			}
-
-			dataMap.put(graph.ordinal(), dataList);
-		}
-
-		for (int i = 0; i < dataMap.get(-1).size(); ++i) {
-			updateUi(dataMap.get(-1).get(i),
-					dataMap.get(LineGraphs.SPEED.ordinal()).get(i),
-					dataMap.get(LineGraphs.ENERGY.ordinal()).get(i),
-					dataMap.get(LineGraphs.ACCELERATION.ordinal()).get(i)
-					);
+		for (int i = 1; i < speedSplit.length; ++i) {
+			updateUi(Float.parseFloat(speedSplit[i].trim().split(" ")[1]),
+					Float.parseFloat(speedSplit[i].trim().split(" ")[3]),
+					Float.parseFloat(energySplit[i].trim().split(" ")[3]),
+					Float.parseFloat(accelerationSplit[i].trim().split(" ")[3])
+			);
 		}
 	}
 

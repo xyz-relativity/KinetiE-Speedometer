@@ -6,10 +6,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Window;
 import android.view.WindowManager;
@@ -34,7 +36,6 @@ import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -94,10 +95,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private SharedPreferences settings;
 
 	enum LineGraphs {
-		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), 3f, YAxis.AxisDependency.RIGHT),
-		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), 1.5f, YAxis.AxisDependency.RIGHT),
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#aaff5500"), 0.5f, YAxis.AxisDependency.LEFT);
-
+		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), convertDpToPixel(1).floatValue(), YAxis.AxisDependency.RIGHT),
+		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.75).floatValue(), YAxis.AxisDependency.RIGHT),
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.4).floatValue(), YAxis.AxisDependency.LEFT);
 
 		public final int label;
 		public final int unit;
@@ -538,6 +538,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 //		locationManager.onPause();
 		isRunning = false;
 		super.onPause();
+	}
+
+	/**
+	 * This method converts dp unit to equivalent pixels, depending on device density.
+	 *
+	 * @param dp A value in dp (density independent pixels) unit. Which we need to convert into pixels
+	 * @return A float value to represent px equivalent to dp depending on device density
+	 */
+	public static Double convertDpToPixel(double dp) {
+		return dp * ((double) Resources.getSystem().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
 	}
 
 }

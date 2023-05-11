@@ -28,7 +28,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="0.7"
+            android:layout_weight="0.6"
             app:layout_constraintHorizontal_chainStyle="packed"
             >
 
@@ -76,7 +76,7 @@
             android:id="@+id/historyChart"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="0.3"
+            android:layout_weight="0.4"
             android:background="#00ffffff" />
 
     </LinearLayout>

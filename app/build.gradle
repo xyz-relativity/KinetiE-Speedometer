@@ -5,10 +5,10 @@ android {
 
     defaultConfig {
         applicationId "com.xyz.relativity.kineticespeedometer"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 33
-        versionCode 202007203
-        versionName "2023.05-1"
+        versionCode 202007204
+        versionName "2023.05-2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

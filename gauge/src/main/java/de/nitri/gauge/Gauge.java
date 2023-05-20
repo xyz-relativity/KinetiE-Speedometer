@@ -410,6 +410,8 @@ public class Gauge extends View {
 
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		super.onSizeChanged(w, h, oldw, oldh);
+
 		canvasWidth = (float) w;
 		canvasHeight = (float) h;
 		canvasCenterX = w / 2f;
@@ -480,8 +482,6 @@ public class Gauge extends View {
 		upperTextUnitPaint.setTextSize(requestedUpperUnitTextSize > 0 ? requestedUpperUnitTextSize * textScaleFactor : textSize);
 		lowerTextPaint.setTextSize(requestedLowerTextSize > 0 ? requestedLowerTextSize * textScaleFactor : textSize);
 		lowerTextUnitPaint.setTextSize(requestedLowerUnitTextSize > 0 ? requestedLowerUnitTextSize * textScaleFactor : textSize);
-
-		super.onSizeChanged(w, h, oldw, oldh);
 	}
 
 	private void setNeedle() {
@@ -677,17 +677,6 @@ public class Gauge extends View {
 		lowerTextColor = color;
 		initValues();
 		initPaint();
-	}
-
-	/**
-	 * Request a text size.
-	 *
-	 * @param size Size (pixels)
-	 * @see Paint#setTextSize(float);
-	 */
-	@Deprecated
-	public void setRequestedTextSize(float size) {
-		setTextSize(size);
 	}
 
 	/**

@@ -9,6 +9,10 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Color;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -49,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
 
-public class MainActivity extends AppCompatActivity implements ILocationListener {
+public class MainActivity extends AppCompatActivity implements ILocationListener, SensorEventListener {
 	private DeviceLocationManager locationManager;
 
 	private static final String SAVED_GRAPH_DATA = "GRAPH_DATA";
@@ -64,7 +68,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final String ODOMETER_FORMAT = "%011.02f km";
 	private static final float MASS_KG = 1;
 	private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
-	private static final float G_UNIT_CONVERSION = 0.10197162129779f;
 	private static final float GAUGE_MAX_SPEED_KH = 200;
 	private static final float MAX_SPEED_MS = (GAUGE_MAX_SPEED_KH / 3.6f); // convert to meters per second.
 	private static final int GAUGE_MAX_ENERGY = Math.round(ONE_HALF_MASS_KG * MAX_SPEED_MS * MAX_SPEED_MS);
@@ -79,7 +82,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	private LineChart chart;
 	private TextView odometerView;
-	Timer timer = new Timer();
 
 	long startTime = System.currentTimeMillis();
 	float prevSpeed = 0;
@@ -94,10 +96,32 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private double odometerMeters;
 	private SharedPreferences settings;
 
+	// --- State Variables ---
+	private float fusedSpeedMps = 0.0f;
+	private long lastSensorTimestampNs = 0;
+	private boolean hasFirstGpsFix = false;
+
+	// --- Rotation and Orientation Matrices ---
+	private final float[] rotationMatrix = new float[9];
+	private final float[] localAcceleration = new float[3];
+	private final float[] worldAcceleration = new float[3];
+
+	// --- Tuning Constants ---
+	// ALPHA determines the weight of GPS vs IMU.
+	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.85f;
+	private static final float ACCEL_NOISE_DEADZONE = 0.15f; // m/s^2
+	private float stepAcceleration;
+
+	@Override
+	public void onPointerCaptureChanged(boolean hasCapture) {
+		super.onPointerCaptureChanged(hasCapture);
+	}
+
 	enum LineGraphs {
+		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.3).floatValue(), YAxis.AxisDependency.LEFT),
 		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), convertDpToPixel(1).floatValue(), YAxis.AxisDependency.RIGHT),
-		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.5).floatValue(), YAxis.AxisDependency.RIGHT),
-		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.3).floatValue(), YAxis.AxisDependency.LEFT);
+		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.5).floatValue(), YAxis.AxisDependency.RIGHT);
 
 		public final int label;
 		public final int unit;
@@ -137,7 +161,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	@Override
-	public void onRestoreInstanceState(Bundle savedInstanceState) {
+	public void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
 		super.onRestoreInstanceState(savedInstanceState);
 
 		startTime = savedInstanceState.getLong(SAVED_START_TIME);
@@ -171,6 +195,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
+
+		Sensor accel = sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
+// Use SENSOR_DELAY_GAME or SENSOR_DELAY_FASTEST for low-latency gaps
+		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
+
 		settings = getSharedPreferences("configs", 0);
 
 		supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -197,43 +230,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		initChart();
 		initGauge();
-	}
-
-	private void initAnimationTimer() {
-		timer.cancel();
-		timer = new Timer();
-		timer.scheduleAtFixedRate(new TimerTask() {
-			@Override
-			public void run() {
-				float time = (System.currentTimeMillis() - startTime);
-				if (time < 0) {
-					startTime = System.currentTimeMillis();
-					time = 0;
-					prevTime = 0;
-				}
-
-				if (deltaLeft <= Math.abs(speedStep)) {
-					speedStep = 0;
-					currentSpeedMps = targetSpeedMps;
-					deltaLeft = 0;
-				} else {
-					currentSpeedMps = currentSpeedMps + speedStep;
-					deltaLeft = deltaLeft - Math.abs(speedStep);
-				}
-
-				float dt = (time - prevTime) / 1000;
-				Float acceleration = null;
-				if (dt != 0) {
-					acceleration = ((currentSpeedMps - prevSpeed) / dt) * G_UNIT_CONVERSION;
-				}
-
-				odometerMeters = odometerMeters + (dt * currentSpeedMps);
-
-				updateUi(time, currentSpeedMps * 3.6f, (ONE_HALF_MASS_KG * currentSpeedMps * currentSpeedMps), acceleration);
-				prevTime = time;
-				prevSpeed = currentSpeedMps;
-			}
-		}, 0, GRAPH_UPDATE_INTERVAL_MILLISECONDS);
 	}
 
 	private void initChart() {
@@ -385,15 +381,107 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	public void updatePosition(Location location) {
-		if (location.hasSpeed()) {
-			targetSpeedMps = (location.getSpeed() > 0.25)?location.getSpeed():0;
-		} else {
-			targetSpeedMps = 0;
+		if (location.hasSpeed() && location.getAccuracy() < 12.0f ) {
+			targetSpeedMps = location.getSpeed();
+
+			if (!hasFirstGpsFix) {
+				fusedSpeedMps = targetSpeedMps;
+				hasFirstGpsFix = true;
+				return;
+			}
+
+			// Complementary filter fusion on GPS tick
+			// Snap the fused speed closer to the absolute truth of the GPS
+			fusedSpeedMps = (COMPLEMENTARY_FILTER_ALPHA * fusedSpeedMps) +
+					((1.0f - COMPLEMENTARY_FILTER_ALPHA) * targetSpeedMps);
+		}
+	}
+
+	// --- 2. WORLD TRANSLATION & INTEGRATION (IMU Input) ---
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		// Track orientation to build the translation matrix
+		if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+			SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+			return;
 		}
 
-		deltaLeft = Math.abs(targetSpeedMps - currentSpeedMps);
-		speedStep = (targetSpeedMps - currentSpeedMps) / 10f;
+		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION && hasFirstGpsFix) {
+			long currentTimestampNs = event.timestamp;
+
+			if (lastSensorTimestampNs == 0) {
+				lastSensorTimestampNs = currentTimestampNs;
+				return;
+			}
+
+			float dt = (currentTimestampNs - lastSensorTimestampNs) / 1000000000.0f;
+			lastSensorTimestampNs = currentTimestampNs;
+
+			// Extract raw, phone-relative acceleration forces
+			localAcceleration[0] = event.values[0]; // X: Left/Right
+			localAcceleration[1] = event.values[1]; // Y: Up/Down
+			localAcceleration[2] = event.values[2]; // Z: Forward/Backward
+
+			// Matrix Multiplication: Project phone coordinates into World Coordinates
+			// worldAcceleration[0] = East, worldAcceleration[1] = North, worldAcceleration[2] = Sky
+			multiplyMatrixVector(rotationMatrix, localAcceleration, worldAcceleration);
+
+			// In a moving vehicle, horizontal acceleration represents forward driving or braking force.
+			// We calculate horizontal net acceleration vector magnitude (East/North plane)
+			float horizontalAccelMag = (float) Math.sqrt(
+					(worldAcceleration[0] * worldAcceleration[0]) +
+							(worldAcceleration[1] * worldAcceleration[1])
+			);
+
+			// Filter micro-vibrations from engine idle or road bumps
+			if (horizontalAccelMag < ACCEL_NOISE_DEADZONE) {
+				horizontalAccelMag = 0.0f;
+			}
+
+			// Determine sign (Acceleration vs Braking) using vector dot product.
+			// If the force vector aligns with the direction of gravity-adjusted forward travel, it is positive.
+			// For dashboard phone mounts, Y or Z axis directional shifts dictate sign.
+			boolean isDeaccelerating = worldAcceleration[1] < 0; // Negative North/Forward world vector component
+
+			stepAcceleration = isDeaccelerating ? -horizontalAccelMag : horizontalAccelMag;
+
+			// Integrate acceleration step into the fused speed
+			fusedSpeedMps += stepAcceleration * dt;
+
+			// Prevent negative speeds when coming to a complete stop
+			if (fusedSpeedMps < 0.1f) {
+				fusedSpeedMps = 0.0f;
+			}
+
+			// Send to UI thread
+			triggerUiUpdate(fusedSpeedMps, stepAcceleration);
+		}
 	}
+
+	/**
+	 * Helper method to multiply a 3x3 rotation matrix by a 3x1 vector.
+	 */
+	private void multiplyMatrixVector(float[] matrix, float[] vector, float[] result) {
+		result[0] = matrix[0] * vector[0] + matrix[1] * vector[1] + matrix[2] * vector[2];
+		result[1] = matrix[3] * vector[0] + matrix[4] * vector[1] + matrix[5] * vector[2];
+		result[2] = matrix[6] * vector[0] + matrix[7] * vector[1] + matrix[8] * vector[2];
+	}
+
+	private void triggerUiUpdate(float speedMps, float acceleration) {
+		float speedKmh = speedMps * 3.6f;
+
+		float time = (System.currentTimeMillis() - startTime);
+		if (time < 0) {
+			startTime = System.currentTimeMillis();
+			time = 0;
+			prevTime = 0;
+		}
+
+		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedMps * speedMps), acceleration);
+		// Broadcast speed values to your UI components here...
+	}
+
+	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
 	private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
 		this.runOnUiThread(new Runnable() {
@@ -525,7 +613,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		isRunning = true;
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		locationManager.onResume();
-		initAnimationTimer();
 	}
 
 	@Override

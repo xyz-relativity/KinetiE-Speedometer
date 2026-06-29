@@ -578,7 +578,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		for (LineGraphs graph : LineGraphs.values()) {
 			LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.getLabelWithUnit(this));
-			dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
+			dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 			dataSet.setLineWidth(graph.lineSize);
 			dataSet.setDrawCircles(false);
 			dataSet.setDrawValues(false);

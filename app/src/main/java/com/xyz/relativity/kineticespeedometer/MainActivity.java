@@ -45,10 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 
 import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
@@ -74,11 +71,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int GAUGE_NICK_COUNT = (int)GAUGE_MAX_SPEED_KH;
 	private static final int MAJOR_NICK_FOR_SPEED = 20;
 	private static final int MINOR_NICK_FOR_SPEED = 10;
-	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
-	private static final int GRAPH_HISTORY_LENGTH_SECONDS = (int) TimeUnit.MINUTES.toSeconds(5);
-	private static final int GRAPH_UPDATE_INTERVAL_MILLISECONDS = 100;
+	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 1000;
 
-	private static final int MAX_SAMPLES = GRAPH_HISTORY_LENGTH_SECONDS * ((int) TimeUnit.SECONDS.toMillis(1) / GRAPH_UPDATE_INTERVAL_MILLISECONDS);
+	private static final int GRAPH_MAX_SAMPLES = 10000;
 
 	private LineChart chart;
 	private TextView odometerView;
@@ -263,7 +258,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		legend.setTextColor(getThemeColor(MainActivity.this, android.R.attr.textColor));
 
 		chart.setData(buildLineData());
-		chart.setMaxVisibleValueCount(MAX_SAMPLES);
+		chart.setMaxVisibleValueCount(GRAPH_MAX_SAMPLES);
 		chart.invalidate(); // refresh
 	}
 
@@ -469,6 +464,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	private void triggerUiUpdate(float speedMps, float acceleration) {
 		float speedKmh = speedMps * 3.6f;
+		float stepAccelerationInG = stepAcceleration / SensorManager.GRAVITY_EARTH;
 
 		float time = (System.currentTimeMillis() - startTime);
 		if (time < 0) {
@@ -477,7 +473,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			prevTime = 0;
 		}
 
-		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedMps * speedMps), acceleration);
+		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedMps * speedMps), stepAccelerationInG);
 		// Broadcast speed values to your UI components here...
 	}
 
@@ -496,7 +492,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				}
 
 				for (ILineDataSet i : data.getDataSets()) {
-					if (i.getEntryCount() >= MAX_SAMPLES) {
+					if (i.getEntryCount() >= GRAPH_MAX_SAMPLES) {
 						i.removeFirst();
 					}
 				}

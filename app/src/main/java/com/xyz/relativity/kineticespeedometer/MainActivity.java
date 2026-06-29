@@ -106,7 +106,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
 	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.85f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.15f; // m/s^2
+	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
 	private float stepAcceleration;
+
+	// Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
+	private float smoothedAcceleration = 0.0f; // Track historical state for LPF
 
 	@Override
 	public void onPointerCaptureChanged(boolean hasCapture) {
@@ -437,8 +441,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			// If the force vector aligns with the direction of gravity-adjusted forward travel, it is positive.
 			// For dashboard phone mounts, Y or Z axis directional shifts dictate sign.
 			boolean isDeaccelerating = worldAcceleration[1] < 0; // Negative North/Forward world vector component
-
 			stepAcceleration = isDeaccelerating ? -horizontalAccelMag : horizontalAccelMag;
+
+			// --- APPLY LOW-PASS FILTER HERE ---
+			// Formula: Smoothed = (Alpha * NewValue) + ((1 - Alpha) * OldSmoothedValue)
+			smoothedAcceleration = (ACCEL_SMOOTHING_ALPHA * stepAcceleration) +
+					((1.0f - ACCEL_SMOOTHING_ALPHA) * smoothedAcceleration);
 
 			// Integrate acceleration step into the fused speed
 			fusedSpeedMps += stepAcceleration * dt;
@@ -449,7 +457,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			}
 
 			// Send to UI thread
-			triggerUiUpdate(fusedSpeedMps, stepAcceleration);
+			triggerUiUpdate(fusedSpeedMps, smoothedAcceleration);
 		}
 	}
 

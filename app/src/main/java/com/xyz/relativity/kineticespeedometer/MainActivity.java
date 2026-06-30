@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int GAUGE_NICK_COUNT = (int)GAUGE_MAX_SPEED_KH;
 	private static final int MAJOR_NICK_FOR_SPEED = 20;
 	private static final int MINOR_NICK_FOR_SPEED = 10;
-	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 1000;
+	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 500;
 
 	private static final int GRAPH_MAX_SAMPLES = 10000;
 
@@ -107,9 +107,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.85f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.15f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
-	private float stepAcceleration;
 
-	// Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
+    // Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
 	private float smoothedAcceleration = 0.0f; // Track historical state for LPF
 
 	@Override
@@ -200,8 +199,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 
 // Use SENSOR_DELAY_GAME or SENSOR_DELAY_FASTEST for low-latency gaps
-		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_UI);
 
 		settings = getSharedPreferences("configs", 0);
 
@@ -441,7 +440,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			// If the force vector aligns with the direction of gravity-adjusted forward travel, it is positive.
 			// For dashboard phone mounts, Y or Z axis directional shifts dictate sign.
 			boolean isDeaccelerating = worldAcceleration[1] < 0; // Negative North/Forward world vector component
-			stepAcceleration = isDeaccelerating ? -horizontalAccelMag : horizontalAccelMag;
+            float stepAcceleration = isDeaccelerating ? -horizontalAccelMag : horizontalAccelMag;
 
 			// --- APPLY LOW-PASS FILTER HERE ---
 			// Formula: Smoothed = (Alpha * NewValue) + ((1 - Alpha) * OldSmoothedValue)
@@ -449,7 +448,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 					((1.0f - ACCEL_SMOOTHING_ALPHA) * smoothedAcceleration);
 
 			// Integrate acceleration step into the fused speed
-			fusedSpeedMps += stepAcceleration * dt;
+			fusedSpeedMps += smoothedAcceleration * dt;
 
 			// Prevent negative speeds when coming to a complete stop
 			if (fusedSpeedMps < 0.1f) {
@@ -472,7 +471,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	private void triggerUiUpdate(float speedMps, float acceleration) {
 		float speedKmh = speedMps * 3.6f;
-		float stepAccelerationInG = stepAcceleration / SensorManager.GRAVITY_EARTH;
+		float stepAccelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
 
 		float time = (System.currentTimeMillis() - startTime);
 		if (time < 0) {
@@ -586,7 +585,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		for (LineGraphs graph : LineGraphs.values()) {
 			LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.getLabelWithUnit(this));
-			dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+			dataSet.setMode(LineDataSet.Mode.LINEAR);
 			dataSet.setLineWidth(graph.lineSize);
 			dataSet.setDrawCircles(false);
 			dataSet.setDrawValues(false);

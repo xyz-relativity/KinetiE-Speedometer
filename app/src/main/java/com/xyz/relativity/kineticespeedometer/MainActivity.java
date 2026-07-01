@@ -101,11 +101,11 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	// --- Tuning Constants ---
 	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 500;
-	private static final int GRAPH_MAX_SAMPLES = 10000;
+	private static final int GRAPH_MAX_SAMPLES = 8000;
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.25f;
-	private static final float ACCEL_NOISE_DEADZONE = 0.15f; // m/s^2
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.80f;
+	private static final float ACCEL_NOISE_DEADZONE = 0.10f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
 
 	// --- Rolling Average Variables ---
@@ -477,23 +477,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void triggerUiUpdate(float speedMps, float acceleration) {
-		// 1. Rolling average for Speed
-		speedWindow.add(speedMps);
-		speedWindowSum += speedMps;
-		if (speedWindow.size() > ROLLING_WINDOW_SIZE) {
-			speedWindowSum -= speedWindow.poll();
-		}
-		float rollingAvgSpeedMps = speedWindowSum / speedWindow.size();
-		float speedKmh = rollingAvgSpeedMps * 3.6f;
-
-		// 2. Rolling average for Acceleration
-		accelWindow.add(acceleration);
-		accelWindowSum += acceleration;
-		if (accelWindow.size() > ROLLING_WINDOW_SIZE) {
-			accelWindowSum -= accelWindow.poll();
-		}
-		float rollingAvgAccel = accelWindowSum / accelWindow.size();
-		float stepAccelerationInG = rollingAvgAccel / SensorManager.GRAVITY_EARTH;
+		float speedKmh = speedMps * 3.6f;
+		float accelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
 
 		float time = (System.currentTimeMillis() - startTime);
 		if (time < 0) {
@@ -503,7 +488,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		}
 
 		// 3. Send smoothed values to UI
-		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * rollingAvgSpeedMps * rollingAvgSpeedMps), stepAccelerationInG);
+		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedKmh * speedKmh), accelerationInG);
 	}
 
 	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}

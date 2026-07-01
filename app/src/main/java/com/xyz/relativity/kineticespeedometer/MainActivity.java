@@ -71,9 +71,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int GAUGE_NICK_COUNT = (int)GAUGE_MAX_SPEED_KH;
 	private static final int MAJOR_NICK_FOR_SPEED = 20;
 	private static final int MINOR_NICK_FOR_SPEED = 10;
-	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 500;
 
-	private static final int GRAPH_MAX_SAMPLES = 10000;
 
 	private LineChart chart;
 	private TextView odometerView;
@@ -102,11 +100,20 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private final float[] worldAcceleration = new float[3];
 
 	// --- Tuning Constants ---
+	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 500;
+	private static final int GRAPH_MAX_SAMPLES = 10000;
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.85f;
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.25f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.15f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
+
+	// --- Rolling Average Variables ---
+	private static final int ROLLING_WINDOW_SIZE = 2; // Number of samples to smooth over (increase for more smoothing)
+	private final java.util.Queue<Float> speedWindow = new java.util.LinkedList<>();
+	private final java.util.Queue<Float> accelWindow = new java.util.LinkedList<>();
+	private float speedWindowSum = 0.0f;
+	private float accelWindowSum = 0.0f;
 
     // Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
 	private float smoothedAcceleration = 0.0f; // Track historical state for LPF
@@ -118,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	enum LineGraphs {
 		ACCELERATION(R.string.acceleration_label, R.string.acceleration_unit, Color.parseColor("#ff88ddff"), convertDpToPixel(0.3).floatValue(), YAxis.AxisDependency.LEFT),
-		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), convertDpToPixel(1).floatValue(), YAxis.AxisDependency.RIGHT),
+		SPEED(R.string.speed_label, R.string.speed_unit, Color.parseColor("#ff22ff22"), convertDpToPixel(0.7).floatValue(), YAxis.AxisDependency.RIGHT),
 		ENERGY(R.string.kinetic_energy_label, R.string.kinetic_energy_unit, Color.parseColor("#ffffff22"), convertDpToPixel(0.5).floatValue(), YAxis.AxisDependency.RIGHT);
 
 		public final int label;
@@ -470,8 +477,23 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void triggerUiUpdate(float speedMps, float acceleration) {
-		float speedKmh = speedMps * 3.6f;
-		float stepAccelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
+		// 1. Rolling average for Speed
+		speedWindow.add(speedMps);
+		speedWindowSum += speedMps;
+		if (speedWindow.size() > ROLLING_WINDOW_SIZE) {
+			speedWindowSum -= speedWindow.poll();
+		}
+		float rollingAvgSpeedMps = speedWindowSum / speedWindow.size();
+		float speedKmh = rollingAvgSpeedMps * 3.6f;
+
+		// 2. Rolling average for Acceleration
+		accelWindow.add(acceleration);
+		accelWindowSum += acceleration;
+		if (accelWindow.size() > ROLLING_WINDOW_SIZE) {
+			accelWindowSum -= accelWindow.poll();
+		}
+		float rollingAvgAccel = accelWindowSum / accelWindow.size();
+		float stepAccelerationInG = rollingAvgAccel / SensorManager.GRAVITY_EARTH;
 
 		float time = (System.currentTimeMillis() - startTime);
 		if (time < 0) {
@@ -480,8 +502,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			prevTime = 0;
 		}
 
-		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedMps * speedMps), stepAccelerationInG);
-		// Broadcast speed values to your UI components here...
+		// 3. Send smoothed values to UI
+		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * rollingAvgSpeedMps * rollingAvgSpeedMps), stepAccelerationInG);
 	}
 
 	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}

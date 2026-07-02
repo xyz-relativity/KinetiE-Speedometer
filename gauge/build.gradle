@@ -3,7 +3,7 @@ apply plugin: 'com.android.library'
 group = 'com.github.Pygmalion69'
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 37
 
     defaultConfig {
         minSdkVersion 23

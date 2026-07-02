@@ -108,13 +108,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final float ACCEL_NOISE_DEADZONE = 0.10f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
 
-	// --- Rolling Average Variables ---
-	private static final int ROLLING_WINDOW_SIZE = 2; // Number of samples to smooth over (increase for more smoothing)
-	private final java.util.Queue<Float> speedWindow = new java.util.LinkedList<>();
-	private final java.util.Queue<Float> accelWindow = new java.util.LinkedList<>();
-	private float speedWindowSum = 0.0f;
-	private float accelWindowSum = 0.0f;
-
     // Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
 	private float smoothedAcceleration = 0.0f; // Track historical state for LPF
 
@@ -477,7 +470,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void triggerUiUpdate(float speedMps, float acceleration) {
-		float speedKmh = speedMps * 3.6f;
 		float accelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
 
 		float time = (System.currentTimeMillis() - startTime);
@@ -488,17 +480,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		}
 
 		// 3. Send smoothed values to UI
-		updateUi(time, speedKmh, (ONE_HALF_MASS_KG * speedKmh * speedKmh), accelerationInG);
+		updateUi(time, speedMps * 3.6f, (ONE_HALF_MASS_KG * speedMps * speedMps), accelerationInG);
 	}
 
 	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
-	private void updateUi(final float time, final Float speed, final Float energy, final Float acceleration) {
+	private void updateUi(final float time, final Float speedKph, final Float energy, final Float acceleration) {
 		this.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				final LineData data = chart.getData();
-				data.addEntry(new Entry(time, speed), LineGraphs.SPEED.ordinal());
+				data.addEntry(new Entry(time, speedKph), LineGraphs.SPEED.ordinal());
 				data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
 
 				if (acceleration != null) {
@@ -520,7 +512,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 					gaugeView.moveToValue(energy);
 					gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
-					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speed));
+					gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speedKph));
 
 					chart.invalidate();
 				}

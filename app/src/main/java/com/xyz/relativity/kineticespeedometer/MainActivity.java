@@ -104,12 +104,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int GRAPH_MAX_SAMPLES = 8000;
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.80f;
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.70f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.10f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
 
     // Lower value = smoother but more lag. Higher value (e.g., 0.3) = more responsive but noisier.
-	private float smoothedAcceleration = 0.0f; // Track historical state for LPF
+	private float smoothedAcceleration = 0.01f; // Track historical state for LPF
 
 	@Override
 	public void onPointerCaptureChanged(boolean hasCapture) {
@@ -570,7 +570,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			final NumberFormat formatter = NumberFormat.getInstance(Locale.getDefault());
 			{
 				formatter.setMaximumFractionDigits(2);
-				formatter.setRoundingMode(RoundingMode.HALF_UP);
+				formatter.setRoundingMode(RoundingMode.HALF_EVEN);
 			}
 			@Override
 			public String getFormattedValue(float value) {

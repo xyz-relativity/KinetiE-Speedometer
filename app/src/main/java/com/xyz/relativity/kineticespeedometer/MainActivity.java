@@ -99,12 +99,14 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private final float[] localAcceleration = new float[3];
 	private final float[] worldAcceleration = new float[3];
 
+
 	// --- Tuning Constants ---
-	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 500;
+	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
+	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
 	private static final int GRAPH_MAX_SAMPLES = 8000;
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.70f;
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.20f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.10f; // m/s^2
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
 
@@ -199,8 +201,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 
 // Use SENSOR_DELAY_GAME or SENSOR_DELAY_FASTEST for low-latency gaps
-		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI);
-		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_UI);
+		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
+		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
 
 		settings = getSharedPreferences("configs", 0);
 
@@ -392,6 +394,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			// Snap the fused speed closer to the absolute truth of the GPS
 			fusedSpeedMps = (COMPLEMENTARY_FILTER_ALPHA * fusedSpeedMps) +
 					((1.0f - COMPLEMENTARY_FILTER_ALPHA) * targetSpeedMps);
+
+			triggerUiUpdate(fusedSpeedMps, smoothedAcceleration);
 		}
 	}
 
@@ -404,7 +408,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			return;
 		}
 
-		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION && hasFirstGpsFix) {
+		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
 			long currentTimestampNs = event.timestamp;
 
 			if (lastSensorTimestampNs == 0) {
@@ -584,7 +588,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		for (LineGraphs graph : LineGraphs.values()) {
 			LineDataSet dataSet = new LineDataSet(new CopyOnWriteArrayList<Entry>(), graph.getLabelWithUnit(this));
-			dataSet.setMode(LineDataSet.Mode.LINEAR);
+			dataSet.setMode(GRAPH_DATA_SET_DISPLAY_MODE);
 			dataSet.setLineWidth(graph.lineSize);
 			dataSet.setDrawCircles(false);
 			dataSet.setDrawValues(false);
@@ -624,7 +628,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		editor.apply();
 
 		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-//		locationManager.onPause();
+		locationManager.onPause();
 		isRunning = false;
 		super.onPause();
 	}

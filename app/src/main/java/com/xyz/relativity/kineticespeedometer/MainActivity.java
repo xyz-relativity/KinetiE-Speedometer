@@ -93,17 +93,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private float fusedSpeedMps = 0.0f;
 	private long lastSensorTimestampNs = 0;
 	private boolean hasFirstGpsFix = false;
+	private long firstSensorTimestampNs = 0;
 
 	// --- Rotation and Orientation Matrices ---
 	private final float[] rotationMatrix = new float[9];
 	private final float[] localAcceleration = new float[3];
 	private final float[] worldAcceleration = new float[3];
 
+	// Track the normalized direction of travel from GPS (East, North)
+	private float gpsDirectionX = 0.0f;
+	private float gpsDirectionY = 0.0f;
+	private boolean hasMovementDirection = false;
 
 	// --- Tuning Constants ---
 	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
 	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
-	private static final int GRAPH_MAX_SAMPLES = 8000;
+	private static final int GRAPH_MAX_SAMPLES = 10000;
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
 	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.20f;
@@ -177,7 +182,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		String[] accelerationSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ACCELERATION.name()).split("Entry,");
 
 		for (int i = 1; i < speedSplit.length; ++i) {
-			updateUi(Float.parseFloat(speedSplit[i].trim().split(" ")[1]),
+			updateUi(Long.parseLong(speedSplit[i].trim().split(" ")[1]),
 					Float.parseFloat(speedSplit[i].trim().split(" ")[3]),
 					Float.parseFloat(energySplit[i].trim().split(" ")[3]),
 					Float.parseFloat(accelerationSplit[i].trim().split(" ")[3])
@@ -384,14 +389,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		if (location.hasSpeed() && location.getAccuracy() < 12.0f ) {
 			targetSpeedMps = location.getSpeed();
 
+			// If moving faster than a slow walk, update our travel direction vector
+			if (targetSpeedMps > 1.0f && location.hasBearing()) {
+				// Convert bearing (degrees clockwise from North) to radians
+				double bearingRad = Math.toRadians(location.getBearing());
+				// In GIS/World space: X is East (sin), Y is North (cos)
+				gpsDirectionX = (float) Math.sin(bearingRad);
+				gpsDirectionY = (float) Math.cos(bearingRad);
+				hasMovementDirection = true;
+			}
+
 			if (!hasFirstGpsFix) {
 				fusedSpeedMps = targetSpeedMps;
 				hasFirstGpsFix = true;
 				return;
 			}
 
-			// Complementary filter fusion on GPS tick
-			// Snap the fused speed closer to the absolute truth of the GPS
 			fusedSpeedMps = (COMPLEMENTARY_FILTER_ALPHA * fusedSpeedMps) +
 					((1.0f - COMPLEMENTARY_FILTER_ALPHA) * targetSpeedMps);
 
@@ -419,35 +432,31 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			float dt = (currentTimestampNs - lastSensorTimestampNs) / 1000000000.0f;
 			lastSensorTimestampNs = currentTimestampNs;
 
-			// Extract raw, phone-relative acceleration forces
-			localAcceleration[0] = event.values[0]; // X: Left/Right
-			localAcceleration[1] = event.values[1]; // Y: Up/Down
-			localAcceleration[2] = event.values[2]; // Z: Forward/Backward
+			localAcceleration[0] = event.values[0]; // X
+			localAcceleration[1] = event.values[1]; // Y
+			localAcceleration[2] = event.values[2]; // Z
 
-			// Matrix Multiplication: Project phone coordinates into World Coordinates
-			// worldAcceleration[0] = East, worldAcceleration[1] = North, worldAcceleration[2] = Sky
+			// Rotate local phone forces into world (East/North/Sky) forces
 			multiplyMatrixVector(rotationMatrix, localAcceleration, worldAcceleration);
 
-			// In a moving vehicle, horizontal acceleration represents forward driving or braking force.
-			// We calculate horizontal net acceleration vector magnitude (East/North plane)
-			float horizontalAccelMag = (float) Math.sqrt(
-					(worldAcceleration[0] * worldAcceleration[0]) +
-							(worldAcceleration[1] * worldAcceleration[1])
-			);
+			float stepAcceleration = 0.0f;
 
-			// Filter micro-vibrations from engine idle or road bumps
-			if (horizontalAccelMag < ACCEL_NOISE_DEADZONE) {
-				horizontalAccelMag = 0.0f;
+			if (hasMovementDirection) {
+				// Dot product: projects world acceleration onto our GPS path of travel
+				// Positive = speeding up along the path, Negative = slowing down/braking
+				stepAcceleration = (worldAcceleration[0] * gpsDirectionX) + (worldAcceleration[1] * gpsDirectionY);
+			} else {
+				// Fallback if we don't have a GPS heading yet (e.g., just starting out)
+				// Assume horizontal magnitude is acceleration
+				stepAcceleration = (float) Math.sqrt((worldAcceleration[0] * worldAcceleration[0]) + (worldAcceleration[1] * worldAcceleration[1]));
 			}
 
-			// Determine sign (Acceleration vs Braking) using vector dot product.
-			// If the force vector aligns with the direction of gravity-adjusted forward travel, it is positive.
-			// For dashboard phone mounts, Y or Z axis directional shifts dictate sign.
-			boolean isDeaccelerating = worldAcceleration[1] < 0; // Negative North/Forward world vector component
-            float stepAcceleration = isDeaccelerating ? -horizontalAccelMag : horizontalAccelMag;
+			// Filter micro-vibrations using the deadzone on the scalar value
+			if (Math.abs(stepAcceleration) < ACCEL_NOISE_DEADZONE) {
+				stepAcceleration = 0.0f;
+			}
 
-			// --- APPLY LOW-PASS FILTER HERE ---
-			// Formula: Smoothed = (Alpha * NewValue) + ((1 - Alpha) * OldSmoothedValue)
+			// --- APPLY LOW-PASS FILTER ---
 			smoothedAcceleration = (ACCEL_SMOOTHING_ALPHA * stepAcceleration) +
 					((1.0f - ACCEL_SMOOTHING_ALPHA) * smoothedAcceleration);
 
@@ -459,7 +468,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				fusedSpeedMps = 0.0f;
 			}
 
-			// Send to UI thread
 			triggerUiUpdate(fusedSpeedMps, smoothedAcceleration);
 		}
 	}
@@ -476,9 +484,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private void triggerUiUpdate(float speedMps, float acceleration) {
 		float accelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
 
-		float time = (System.currentTimeMillis() - startTime);
+		long systemTime = System.currentTimeMillis();
+		long time = (systemTime - startTime);
 		if (time < 0) {
-			startTime = System.currentTimeMillis();
+			startTime = systemTime;
 			time = 0;
 			prevTime = 0;
 		}
@@ -489,7 +498,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
-	private void updateUi(final float time, final Float speedKph, final Float energy, final Float acceleration) {
+	private void updateUi(final long time, final Float speedKph, final Float energy, final Float acceleration) {
 		this.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {

@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final String SAVED_CURRENT_SPEED = "CURRENT_SPEED";
 	private static final String SAVED_SPEED_STEP = "SPEED_STEP";
 	private static final String SAVED_DELTA_LEFT = "DELTA_LEFT";
+	private static final String SAVED_ODOMETER = "ODOMETER";
 
 	private static final String ODOMETER_FORMAT = "%011.2f km";
 	private static final float MASS_KG = 1;
@@ -104,10 +105,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private float gpsDirectionY = 0.0f;
 	private boolean hasMovementDirection = false;
 
-	// ALPHA determines the weight of GPS vs IMU.
-	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.20f;
-
 	private static final float FILTER_TIME_CONSTANT_SEC = 0.20f;
 	private long lastGpsTimestampNs = 0;
 
@@ -118,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	// --- UI Decoupling Handler and Interval ---
 	private static final int UI_UPDATE_INTERVAL_MS = 100; // 10Hz rendering rate
+	private long lastUiUpdateTimeMs = 0;
 
 	// --- Tuning Constants ---
 	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
@@ -129,7 +127,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		@Override
 		public void run() {
 			if (isRunning) {
-				// Read snapshots of volatile calculation data cleanly at fixed intervals
 				processPeriodicUiUpdate(fusedSpeedMps, smoothedAcceleration);
 				uiHandler.postDelayed(this, UI_UPDATE_INTERVAL_MS);
 			}
@@ -175,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		savedInstanceState.putFloat(SAVED_CURRENT_SPEED, currentSpeedMps);
 		savedInstanceState.putFloat(SAVED_SPEED_STEP, speedStep);
 		savedInstanceState.putFloat(SAVED_DELTA_LEFT, deltaLeft);
+		savedInstanceState.putDouble(SAVED_ODOMETER, odometerMeters);
 
 		for (LineGraphs graph: LineGraphs.values()) {
 			ILineDataSet dataSet = chart.getData().getDataSets().get(graph.ordinal());
@@ -192,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		currentSpeedMps = savedInstanceState.getFloat(SAVED_CURRENT_SPEED);
 		speedStep = savedInstanceState.getFloat(SAVED_SPEED_STEP);
 		deltaLeft = savedInstanceState.getFloat(SAVED_DELTA_LEFT);
+		odometerMeters = savedInstanceState.getDouble(SAVED_ODOMETER);
 
 		String[] speedSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.SPEED.name()).split("Entry,");
 		String[] energySplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ENERGY.name()).split("Entry,");
@@ -209,7 +208,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	protected void onStart() {
 		super.onStart();
-		odometerMeters = settings.getFloat("odometer", 0);
+		if (settings.contains("odometer")) {
+			odometerMeters = settings.getFloat("odometer", 0f);
+		}
 	}
 
 	@Override
@@ -350,7 +351,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				hasMovementDirection = true;
 			}
 
-			// 2. Extract the precise hardware-level timestamp in nanoseconds
 			long currentTimestampNs = location.getElapsedRealtimeNanos();
 
 			if (!hasFirstGpsFix || lastGpsTimestampNs == 0) {
@@ -360,15 +360,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				return;
 			}
 
-			// 3. Calculate dt in seconds (converting from nanoseconds)
 			float dt = (currentTimestampNs - lastGpsTimestampNs) / 1_000_000_000.0f;
 			lastGpsTimestampNs = currentTimestampNs;
 
-			// Guard against zero/negative bounds or sudden massive gaps
 			if (dt <= 0.0f) dt = 0.01f;
-			if (dt > 2.0f) dt = 0.25f; // Fallback if GPS drops chunks of time
+			if (dt > 2.0f) dt = 0.25f;
 
-			// 4. Compute dynamic alpha and apply filter
 			float dynamicAlpha = (float) Math.exp(-dt / FILTER_TIME_CONSTANT_SEC);
 			fusedSpeedMps = (dynamicAlpha * fusedSpeedMps) +
 					((1.0f - dynamicAlpha) * targetSpeedMps);
@@ -417,8 +414,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			if (fusedSpeedMps < 0.1f) {
 				fusedSpeedMps = 0.0f;
 			}
-
-			// REMOVED triggerUiUpdate from here to prevent sea-saw graphing layout updates
 		}
 	}
 
@@ -428,16 +423,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		result[2] = matrix[6] * vector[0] + matrix[7] * vector[1] + matrix[8] * vector[2];
 	}
 
-	/**
-	 * Intermediary method called by our decoupled UI loop runner.
-	 */
 	private void processPeriodicUiUpdate(float speedMps, float acceleration) {
+		long currentSystemTime = System.currentTimeMillis();
+		if (lastUiUpdateTimeMs != 0) {
+			float dtUi = (currentSystemTime - lastUiUpdateTimeMs) / 1000.0f;
+			if (dtUi > 0 && dtUi < 2.0f) {
+				// Accumulate distance using current speed over elapsed UI time delta
+				odometerMeters += speedMps * dtUi;
+			}
+		}
+		lastUiUpdateTimeMs = currentSystemTime;
+
 		float accelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
 
-		long systemTime = System.currentTimeMillis();
-		long time = (systemTime - startTime);
+		long time = (currentSystemTime - startTime);
 		if (time < 0) {
-			startTime = systemTime;
+			startTime = currentSystemTime;
 			time = 0;
 			prevTime = 0;
 		}
@@ -448,8 +449,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
 	private void updateUi(final long time, final Float speedKph, final Float energy, final Float acceleration) {
-		// Since this runs explicitly inside our timed loop handler on the Main UI thread,
-		// we can safely update components without wrapping them recursively in runOnUiThread.
 		final LineData data = chart.getData();
 		if (data == null) return;
 
@@ -469,7 +468,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		data.notifyDataChanged();
 
 		if (isRunning) {
-			odometerView.setText(String.format(Locale.getDefault(), ODOMETER_FORMAT, odometerMeters/1000));
+			odometerView.setText(String.format(Locale.getDefault(), ODOMETER_FORMAT, odometerMeters / 1000.0));
 			chart.notifyDataSetChanged();
 
 			gaugeView.moveToValue(energy);
@@ -573,10 +572,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	protected void onResume() {
 		super.onResume();
 		isRunning = true;
+		lastUiUpdateTimeMs = System.currentTimeMillis();
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		locationManager.onResume();
 
-		// Start drawing points smoothly at regular 100ms chunks
 		uiHandler.post(uiRefreshRunnable);
 	}
 
@@ -590,7 +589,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		locationManager.onPause();
 		isRunning = false;
 
-		// Cancel the UI thread handler loops to eliminate background memory churn
 		uiHandler.removeCallbacks(uiRefreshRunnable);
 		super.onPause();
 	}

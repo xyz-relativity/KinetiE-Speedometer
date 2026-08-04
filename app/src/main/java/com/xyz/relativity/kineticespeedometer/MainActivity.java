@@ -106,7 +106,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	// ALPHA determines the weight of GPS vs IMU.
 	// 0.85 means: trust 85% of the existing velocity state + 15% new IMU adjustment.
-	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.10f;
+	private static final float COMPLEMENTARY_FILTER_ALPHA = 0.20f;
+
+	private static final float FILTER_TIME_CONSTANT_SEC = 0.20f;
+	private long lastGpsTimestampNs = 0;
 
 	private static final float ACCEL_NOISE_DEADZONE = 0.10f;
 	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
@@ -347,16 +350,28 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				hasMovementDirection = true;
 			}
 
-			if (!hasFirstGpsFix) {
+			// 2. Extract the precise hardware-level timestamp in nanoseconds
+			long currentTimestampNs = location.getElapsedRealtimeNanos();
+
+			if (!hasFirstGpsFix || lastGpsTimestampNs == 0) {
 				fusedSpeedMps = targetSpeedMps;
 				hasFirstGpsFix = true;
+				lastGpsTimestampNs = currentTimestampNs;
 				return;
 			}
 
-			fusedSpeedMps = (COMPLEMENTARY_FILTER_ALPHA * fusedSpeedMps) +
-					((1.0f - COMPLEMENTARY_FILTER_ALPHA) * targetSpeedMps);
+			// 3. Calculate dt in seconds (converting from nanoseconds)
+			float dt = (currentTimestampNs - lastGpsTimestampNs) / 1_000_000_000.0f;
+			lastGpsTimestampNs = currentTimestampNs;
 
-			// REMOVED triggerUiUpdate from here to isolate UI updates to our handler loop.
+			// Guard against zero/negative bounds or sudden massive gaps
+			if (dt <= 0.0f) dt = 0.01f;
+			if (dt > 2.0f) dt = 0.25f; // Fallback if GPS drops chunks of time
+
+			// 4. Compute dynamic alpha and apply filter
+			float dynamicAlpha = (float) Math.exp(-dt / FILTER_TIME_CONSTANT_SEC);
+			fusedSpeedMps = (dynamicAlpha * fusedSpeedMps) +
+					((1.0f - dynamicAlpha) * targetSpeedMps);
 		}
 	}
 

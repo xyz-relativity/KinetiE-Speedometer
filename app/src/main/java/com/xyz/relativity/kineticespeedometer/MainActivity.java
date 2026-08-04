@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final String SAVED_SPEED_STEP = "SPEED_STEP";
 	private static final String SAVED_DELTA_LEFT = "DELTA_LEFT";
 
-	private static final String ODOMETER_FORMAT = "%011.02f km";
+	private static final String ODOMETER_FORMAT = "%011.2f km";
 	private static final float MASS_KG = 1;
 	private static final float ONE_HALF_MASS_KG = MASS_KG * 0.5f;
 	private static final float GAUGE_MAX_SPEED_KH = 200;

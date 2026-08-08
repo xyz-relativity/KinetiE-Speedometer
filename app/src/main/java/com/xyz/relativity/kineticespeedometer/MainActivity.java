@@ -120,7 +120,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	// --- Tuning Constants ---
 	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
 	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
-	private static final int GRAPH_MAX_SAMPLES = 3*(6*UI_UPDATE_INTERVAL_MS);
+	private static final int GRAPH_DATA_WINDOW_SECONDS = 4 * 60; // 4-minute rolling window
+	private static final int GRAPH_MAX_SAMPLES_PER_SECOND = 1000 / UI_UPDATE_INTERVAL_MS; // samples per second (10)
+	private static final int GRAPH_MAX_SAMPLES = GRAPH_DATA_WINDOW_SECONDS * GRAPH_MAX_SAMPLES_PER_SECOND;
 
 	private final Handler uiHandler = new Handler(Looper.getMainLooper());
 	private final Runnable uiRefreshRunnable = new Runnable() {

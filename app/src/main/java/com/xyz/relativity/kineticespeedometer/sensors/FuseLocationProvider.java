@@ -7,13 +7,11 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import java.util.concurrent.TimeUnit;
 
 public class FuseLocationProvider implements LocationListener {
 	private static final float MINIMUM_DISTANCE_METERS = 0f;
@@ -43,13 +41,10 @@ public class FuseLocationProvider implements LocationListener {
 				&& ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 			return;
 		}
-		lastLocation = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+		lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
 		if (lastLocation != null) {
 			updateListeners();
-		} else {
-			lastLocation = new Location(LocationManager.PASSIVE_PROVIDER);
-			lastLocation.setAccuracy(999);
 		}
 	}
 
@@ -61,14 +56,8 @@ public class FuseLocationProvider implements LocationListener {
 
 		initLocation();
 
-		for (String providerStr: locationManager.getAllProviders()) {
-			if (providerStr.equalsIgnoreCase(LocationManager.PASSIVE_PROVIDER)) {
-				continue;
-			}
-
-			locationManager.requestLocationUpdates(providerStr, intervalMs,
-					MINIMUM_DISTANCE_METERS, FuseLocationProvider.this);
-		}
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, intervalMs,
+				MINIMUM_DISTANCE_METERS, FuseLocationProvider.this);
 	}
 
 	public void onPause() {
@@ -81,13 +70,13 @@ public class FuseLocationProvider implements LocationListener {
 
 	@Override
 	public void onLocationChanged(@NonNull Location location) {
-		long compareTime = SystemClock.elapsedRealtimeNanos();
-		float oldLocationAccuracy = Math.max(0, lastLocation.getAccuracy() + TimeUnit.NANOSECONDS.toSeconds(compareTime - lastLocation.getElapsedRealtimeNanos()));
-		float newLocationAccuracy = Math.max(0, location.getAccuracy() + TimeUnit.NANOSECONDS.toSeconds(compareTime - location.getElapsedRealtimeNanos()));
-
-		if (newLocationAccuracy <= oldLocationAccuracy) {
-			lastLocation = new Location(location);
+		if (!LocationManager.GPS_PROVIDER.equals(location.getProvider())
+				|| (lastLocation != null
+				&& location.getElapsedRealtimeNanos() <= lastLocation.getElapsedRealtimeNanos())) {
+			return;
 		}
+
+		lastLocation = new Location(location);
 		updateListeners();
 	}
 

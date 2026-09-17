@@ -12,3 +12,4 @@
 /captures
 .externalNativeBuild
 .cxx
+.kiro/settings/cli.json

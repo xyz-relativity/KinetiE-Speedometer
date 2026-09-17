@@ -14,9 +14,11 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Window;
@@ -37,7 +39,9 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.xyz.relativity.kineticespeedometer.sensors.DeviceLocationManager;
+import com.xyz.relativity.kineticespeedometer.sensors.HeadingTracker;
 import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
+import com.xyz.relativity.kineticespeedometer.sensors.SpeedFusion;
 
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -48,6 +52,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import de.nitri.gauge.Gauge;
 import de.nitri.gauge.IGaugeNick;
@@ -55,7 +60,8 @@ import de.nitri.gauge.IGaugeNick;
 public class MainActivity extends AppCompatActivity implements ILocationListener, SensorEventListener {
 	private DeviceLocationManager locationManager;
 
-	private static final String SAVED_GRAPH_DATA = "GRAPH_DATA";
+	private static final String SAVED_GRAPH_TIMESTAMPS = "GRAPH_TIMESTAMPS";
+	private static final String SAVED_GRAPH_VALUES = "GRAPH_VALUES";
 	private static final String SAVED_START_TIME = "START_TIME";
 	private static final String SAVED_PREV_SPEED = "PREV_SPEED";
 	private static final String SAVED_PREV_TIME = "PREV_TIME";
@@ -91,27 +97,31 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private double odometerMeters;
 	private SharedPreferences settings;
 
-	// --- State Variables ---
+	// --- Speed Fusion State ---
+	private final SpeedFusion speedFusion = new SpeedFusion();
 	private float fusedSpeedMps = 0.0f;
 	private long lastSensorTimestampNs = 0;
-	private boolean hasFirstGpsFix = false;
+	private long lastGpsTimestampNs = 0;
 
 	// --- Rotation and Orientation Matrices ---
 	private final float[] rotationMatrix = new float[9];
 	private final float[] localAcceleration = new float[3];
 	private final float[] worldAcceleration = new float[3];
+	private final float[] localAngularVelocity = new float[3];
+	private final float[] worldAngularVelocity = new float[3];
+	private final float[] orientationAngles = new float[3];
+	private final HeadingTracker headingTracker = new HeadingTracker();
+	private long lastGyroscopeTimestampNs = 0;
 
-	private float gpsDirectionX = 0.0f;
-	private float gpsDirectionY = 0.0f;
-	private boolean hasMovementDirection = false;
-
-	private static final float FILTER_TIME_CONSTANT_SEC = 0.20f;
-	private long lastGpsTimestampNs = 0;
-
+	private static final long MAX_GPS_AGE_NS = TimeUnit.SECONDS.toNanos(5);
+	private static final float MAX_GPS_SPEED_ACCURACY_MPS = 2.5f;
+	private static final float MIN_DIRECTION_SPEED_MPS = 1.0f;
+	private static final float INITIAL_DIRECTION_ACCELERATION_MPS2 = 0.35f;
 	private static final float ACCEL_NOISE_DEADZONE = 0.10f;
-	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
+	private static final float ACCEL_SMOOTHING_TIME_CONSTANT_SEC = 0.15f;
+	private static final float MAX_SENSOR_INTERVAL_SEC = 0.25f;
 
-	private float smoothedAcceleration = 0.01f;
+	private float smoothedAcceleration = 0.0f;
 
 	// --- UI Decoupling Handler and Interval ---
 	private static final int UI_UPDATE_INTERVAL_MS = 100; // 10Hz rendering rate
@@ -176,9 +186,25 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		savedInstanceState.putFloat(SAVED_DELTA_LEFT, deltaLeft);
 		savedInstanceState.putDouble(SAVED_ODOMETER, odometerMeters);
 
+		LineData lineData = chart.getData();
+		if (lineData == null || lineData.getDataSetCount() < LineGraphs.values().length) {
+			return;
+		}
+
+		ILineDataSet speedData = lineData.getDataSetByIndex(LineGraphs.SPEED.ordinal());
+		long[] timestamps = new long[speedData.getEntryCount()];
+		for (int index = 0; index < timestamps.length; index++) {
+			timestamps[index] = Math.round(speedData.getEntryForIndex(index).getX());
+		}
+		savedInstanceState.putLongArray(SAVED_GRAPH_TIMESTAMPS, timestamps);
+
 		for (LineGraphs graph: LineGraphs.values()) {
-			ILineDataSet dataSet = chart.getData().getDataSets().get(graph.ordinal());
-			savedInstanceState.putString(SAVED_GRAPH_DATA + "_" + graph.name(), dataSet.toString());
+			ILineDataSet dataSet = lineData.getDataSetByIndex(graph.ordinal());
+			float[] values = new float[Math.min(timestamps.length, dataSet.getEntryCount())];
+			for (int index = 0; index < values.length; index++) {
+				values[index] = dataSet.getEntryForIndex(index).getY();
+			}
+			savedInstanceState.putFloatArray(SAVED_GRAPH_VALUES + "_" + graph.name(), values);
 		}
 	}
 
@@ -194,16 +220,18 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		deltaLeft = savedInstanceState.getFloat(SAVED_DELTA_LEFT);
 		odometerMeters = savedInstanceState.getDouble(SAVED_ODOMETER);
 
-		String[] speedSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.SPEED.name()).split("Entry,");
-		String[] energySplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ENERGY.name()).split("Entry,");
-		String[] accelerationSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ACCELERATION.name()).split("Entry,");
+		long[] timestamps = savedInstanceState.getLongArray(SAVED_GRAPH_TIMESTAMPS);
+		float[] speedValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.SPEED.name());
+		float[] energyValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.ENERGY.name());
+		float[] accelerationValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.ACCELERATION.name());
+		if (timestamps == null || speedValues == null || energyValues == null || accelerationValues == null) {
+			return;
+		}
 
-		for (int i = 1; i < speedSplit.length; ++i) {
-			updateUi(Long.parseLong(speedSplit[i].trim().split(" ")[1]),
-					Float.parseFloat(speedSplit[i].trim().split(" ")[3]),
-					Float.parseFloat(energySplit[i].trim().split(" ")[3]),
-					Float.parseFloat(accelerationSplit[i].trim().split(" ")[3])
-			);
+		int entryCount = Math.min(timestamps.length,
+				Math.min(speedValues.length, Math.min(energyValues.length, accelerationValues.length)));
+		for (int index = 0; index < entryCount; index++) {
+			updateUi(timestamps[index], speedValues[index], energyValues[index], accelerationValues[index]);
 		}
 	}
 
@@ -222,9 +250,17 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
 		Sensor accel = sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 		Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+		Sensor gyroscope = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
-		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
+		if (accel != null) {
+			sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
+		}
+		if (rotation != null) {
+			sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
+		}
+		if (gyroscope != null) {
+			sm.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_GAME);
+		}
 
 		settings = getSharedPreferences("configs", 0);
 
@@ -245,6 +281,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		}
 
 		locationManager = new DeviceLocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS, this);
+		speedFusion.reset(0.0f);
 
 		initChart();
 		initGauge();
@@ -343,80 +380,124 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	public void updatePosition(Location location) {
-		if (location.hasSpeed() && location.getAccuracy() < 12.0f ) {
-			targetSpeedMps = location.getSpeed();
-
-			if (targetSpeedMps > 1.0f && location.hasBearing()) {
-				double bearingRad = Math.toRadians(location.getBearing());
-				gpsDirectionX = (float) Math.sin(bearingRad);
-				gpsDirectionY = (float) Math.cos(bearingRad);
-				hasMovementDirection = true;
-			}
-
-			long currentTimestampNs = location.getElapsedRealtimeNanos();
-
-			if (!hasFirstGpsFix || lastGpsTimestampNs == 0) {
-				fusedSpeedMps = targetSpeedMps;
-				hasFirstGpsFix = true;
-				lastGpsTimestampNs = currentTimestampNs;
-				return;
-			}
-
-			float dt = (currentTimestampNs - lastGpsTimestampNs) / 1_000_000_000.0f;
-			lastGpsTimestampNs = currentTimestampNs;
-
-			if (dt <= 0.0f) dt = 0.01f;
-			if (dt > 2.0f) dt = 0.25f;
-
-			float dynamicAlpha = (float) Math.exp(-dt / FILTER_TIME_CONSTANT_SEC);
-			fusedSpeedMps = (dynamicAlpha * fusedSpeedMps) +
-					((1.0f - dynamicAlpha) * targetSpeedMps);
+		if (!location.hasSpeed()) {
+			// Sensor callbacks continue dead reckoning; this only skips an unusable GPS correction.
+			return;
 		}
+
+		long locationTimestampNs = location.getElapsedRealtimeNanos();
+		long nowNs = SystemClock.elapsedRealtimeNanos();
+		if (locationTimestampNs <= 0
+				|| nowNs - locationTimestampNs > MAX_GPS_AGE_NS
+				|| (lastGpsTimestampNs != 0 && locationTimestampNs <= lastGpsTimestampNs)) {
+			return;
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+				&& location.hasSpeedAccuracy()
+				&& location.getSpeedAccuracyMetersPerSecond() > MAX_GPS_SPEED_ACCURACY_MPS) {
+			return;
+		}
+
+		targetSpeedMps = location.getSpeed();
+		if (targetSpeedMps > MIN_DIRECTION_SPEED_MPS && location.hasBearing()) {
+			double bearingRad = Math.toRadians(location.getBearing());
+			headingTracker.setTravelDirection((float) Math.sin(bearingRad), (float) Math.cos(bearingRad));
+		}
+
+		if (!speedFusion.isInitialized()) {
+			speedFusion.reset(targetSpeedMps);
+			fusedSpeedMps = speedFusion.getSpeedMps();
+			lastGpsTimestampNs = locationTimestampNs;
+			return;
+		}
+
+		float elapsedSeconds = (locationTimestampNs - lastGpsTimestampNs) / 1_000_000_000.0f;
+		if (elapsedSeconds <= 0.0f) {
+			return;
+		}
+		speedFusion.correctWithGps(targetSpeedMps, elapsedSeconds);
+		fusedSpeedMps = speedFusion.getSpeedMps();
+		lastGpsTimestampNs = locationTimestampNs;
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
 			SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+			SensorManager.getOrientation(rotationMatrix, orientationAngles);
+			headingTracker.updateAttitudeHeading(orientationAngles[0]);
 			return;
 		}
 
-		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-			long currentTimestampNs = event.timestamp;
-			if (lastSensorTimestampNs == 0) {
-				lastSensorTimestampNs = currentTimestampNs;
-				return;
-			}
+		if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+			integrateGyroscopeYaw(event);
+			return;
+		}
 
-			float dt = (currentTimestampNs - lastSensorTimestampNs) / 1000000000.0f;
+		if (event.sensor.getType() != Sensor.TYPE_LINEAR_ACCELERATION) {
+			return;
+		}
+
+		long currentTimestampNs = event.timestamp;
+		if (lastSensorTimestampNs == 0) {
 			lastSensorTimestampNs = currentTimestampNs;
+			return;
+		}
 
-			localAcceleration[0] = event.values[0];
-			localAcceleration[1] = event.values[1];
-			localAcceleration[2] = event.values[2];
+		float elapsedSeconds = (currentTimestampNs - lastSensorTimestampNs) / 1_000_000_000.0f;
+		lastSensorTimestampNs = currentTimestampNs;
+		if (elapsedSeconds <= 0.0f || elapsedSeconds > MAX_SENSOR_INTERVAL_SEC) {
+			return;
+		}
 
-			multiplyMatrixVector(rotationMatrix, localAcceleration, worldAcceleration);
+		localAcceleration[0] = event.values[0];
+		localAcceleration[1] = event.values[1];
+		localAcceleration[2] = event.values[2];
+		multiplyMatrixVector(rotationMatrix, localAcceleration, worldAcceleration);
 
-			float stepAcceleration = 0.0f;
-			if (hasMovementDirection) {
-				stepAcceleration = (worldAcceleration[0] * gpsDirectionX) + (worldAcceleration[1] * gpsDirectionY);
-			} else {
-				stepAcceleration = (float) Math.sqrt((worldAcceleration[0] * worldAcceleration[0]) + (worldAcceleration[1] * worldAcceleration[1]));
-			}
-
-			if (Math.abs(stepAcceleration) < ACCEL_NOISE_DEADZONE) {
-				stepAcceleration = 0.0f;
-			}
-
-			smoothedAcceleration = (ACCEL_SMOOTHING_ALPHA * stepAcceleration) +
-					((1.0f - ACCEL_SMOOTHING_ALPHA) * smoothedAcceleration);
-
-			fusedSpeedMps += smoothedAcceleration * dt;
-
-			if (fusedSpeedMps < 0.1f) {
-				fusedSpeedMps = 0.0f;
+		if (!headingTracker.hasTravelDirection()) {
+			float horizontalAcceleration = (float) Math.hypot(worldAcceleration[0], worldAcceleration[1]);
+			if (horizontalAcceleration >= INITIAL_DIRECTION_ACCELERATION_MPS2) {
+				headingTracker.setTravelDirection(worldAcceleration[0], worldAcceleration[1]);
 			}
 		}
+
+		float stepAcceleration = 0.0f;
+		if (headingTracker.hasTravelDirection()) {
+			stepAcceleration = (worldAcceleration[0] * headingTracker.getDirectionX())
+					+ (worldAcceleration[1] * headingTracker.getDirectionY());
+		}
+
+		if (Math.abs(stepAcceleration) < ACCEL_NOISE_DEADZONE) {
+			stepAcceleration = 0.0f;
+		}
+		float smoothingAlpha = 1.0f - (float) Math.exp(-elapsedSeconds / ACCEL_SMOOTHING_TIME_CONSTANT_SEC);
+		smoothedAcceleration += smoothingAlpha * (stepAcceleration - smoothedAcceleration);
+
+		if (headingTracker.hasTravelDirection() && speedFusion.isInitialized()) {
+			speedFusion.integrateAcceleration(smoothedAcceleration, elapsedSeconds);
+			fusedSpeedMps = speedFusion.getSpeedMps();
+		}
+	}
+
+	private void integrateGyroscopeYaw(SensorEvent event) {
+		long currentTimestampNs = event.timestamp;
+		if (lastGyroscopeTimestampNs == 0) {
+			lastGyroscopeTimestampNs = currentTimestampNs;
+			return;
+		}
+
+		float elapsedSeconds = (currentTimestampNs - lastGyroscopeTimestampNs) / 1_000_000_000.0f;
+		lastGyroscopeTimestampNs = currentTimestampNs;
+		if (elapsedSeconds <= 0.0f || elapsedSeconds > MAX_SENSOR_INTERVAL_SEC || !headingTracker.hasAttitudeHeading()) {
+			return;
+		}
+
+		localAngularVelocity[0] = event.values[0];
+		localAngularVelocity[1] = event.values[1];
+		localAngularVelocity[2] = event.values[2];
+		multiplyMatrixVector(rotationMatrix, localAngularVelocity, worldAngularVelocity);
+		headingTracker.integrateGyroscopeYaw(worldAngularVelocity[2] * elapsedSeconds);
 	}
 
 	private void multiplyMatrixVector(float[] matrix, float[] vector, float[] result) {

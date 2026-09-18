@@ -55,7 +55,8 @@ import de.nitri.gauge.IGaugeNick;
 public class MainActivity extends AppCompatActivity implements ILocationListener, SensorEventListener {
 	private DeviceLocationManager locationManager;
 
-	private static final String SAVED_GRAPH_DATA = "GRAPH_DATA";
+	private static final String SAVED_GRAPH_TIMESTAMPS = "GRAPH_TIMESTAMPS";
+	private static final String SAVED_GRAPH_VALUES = "GRAPH_VALUES";
 	private static final String SAVED_START_TIME = "START_TIME";
 	private static final String SAVED_PREV_SPEED = "PREV_SPEED";
 	private static final String SAVED_PREV_TIME = "PREV_TIME";
@@ -176,9 +177,25 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		savedInstanceState.putFloat(SAVED_DELTA_LEFT, deltaLeft);
 		savedInstanceState.putDouble(SAVED_ODOMETER, odometerMeters);
 
+		LineData lineData = chart.getData();
+		if (lineData == null || lineData.getDataSetCount() < LineGraphs.values().length) {
+			return;
+		}
+
+		ILineDataSet speedData = lineData.getDataSetByIndex(LineGraphs.SPEED.ordinal());
+		long[] timestamps = new long[speedData.getEntryCount()];
+		for (int index = 0; index < timestamps.length; index++) {
+			timestamps[index] = Math.round(speedData.getEntryForIndex(index).getX());
+		}
+		savedInstanceState.putLongArray(SAVED_GRAPH_TIMESTAMPS, timestamps);
+
 		for (LineGraphs graph: LineGraphs.values()) {
-			ILineDataSet dataSet = chart.getData().getDataSets().get(graph.ordinal());
-			savedInstanceState.putString(SAVED_GRAPH_DATA + "_" + graph.name(), dataSet.toString());
+			ILineDataSet dataSet = lineData.getDataSetByIndex(graph.ordinal());
+			float[] values = new float[Math.min(timestamps.length, dataSet.getEntryCount())];
+			for (int index = 0; index < values.length; index++) {
+				values[index] = dataSet.getEntryForIndex(index).getY();
+			}
+			savedInstanceState.putFloatArray(SAVED_GRAPH_VALUES + "_" + graph.name(), values);
 		}
 	}
 
@@ -194,16 +211,18 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		deltaLeft = savedInstanceState.getFloat(SAVED_DELTA_LEFT);
 		odometerMeters = savedInstanceState.getDouble(SAVED_ODOMETER);
 
-		String[] speedSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.SPEED.name()).split("Entry,");
-		String[] energySplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ENERGY.name()).split("Entry,");
-		String[] accelerationSplit = savedInstanceState.getString(SAVED_GRAPH_DATA + "_" + LineGraphs.ACCELERATION.name()).split("Entry,");
+		long[] timestamps = savedInstanceState.getLongArray(SAVED_GRAPH_TIMESTAMPS);
+		float[] speedValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.SPEED.name());
+		float[] energyValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.ENERGY.name());
+		float[] accelerationValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.ACCELERATION.name());
+		if (timestamps == null || speedValues == null || energyValues == null || accelerationValues == null) {
+			return;
+		}
 
-		for (int i = 1; i < speedSplit.length; ++i) {
-			updateUi(Long.parseLong(speedSplit[i].trim().split(" ")[1]),
-					Float.parseFloat(speedSplit[i].trim().split(" ")[3]),
-					Float.parseFloat(energySplit[i].trim().split(" ")[3]),
-					Float.parseFloat(accelerationSplit[i].trim().split(" ")[3])
-			);
+		int entryCount = Math.min(timestamps.length,
+				Math.min(speedValues.length, Math.min(energyValues.length, accelerationValues.length)));
+		for (int index = 0; index < entryCount; index++) {
+			updateUi(timestamps[index], speedValues[index], energyValues[index], accelerationValues[index]);
 		}
 	}
 

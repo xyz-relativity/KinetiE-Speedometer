@@ -11,4 +11,8 @@
     <string name="status_gps">GPS</string>
     <string name="status_dead_reckoning">dead reckoning %1$ds</string>
     <string name="status_learning_axis">%1$s, learning axis</string>
+    <string name="status_recording">REC, %1$s</string>
+    <string name="recording_started">Recording to %1$s</string>
+    <string name="recording_stopped">Recording saved to %1$s</string>
+    <string name="recording_failed">Recording failed: %1$s</string>
 </resources>

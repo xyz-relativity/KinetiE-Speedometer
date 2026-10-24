@@ -21,9 +21,11 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -38,10 +40,14 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.xyz.relativity.kineticespeedometer.fusion.GpsFixPolicy;
 import com.xyz.relativity.kineticespeedometer.fusion.SpeedEstimator;
+import com.xyz.relativity.kineticespeedometer.recording.SensorRecorder;
 import com.xyz.relativity.kineticespeedometer.sensors.DeviceLocationManager;
 import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -81,13 +87,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	// --- GPS handling ---
 	/** 0 lets the hardware deliver fixes at its own rate; GPS chips rarely exceed 1 Hz anyway. */
 	private static final int GPS_MIN_UPDATE_INTERVAL_MILLISECONDS = 0;
-	/** Fixes with a worse horizontal accuracy than this are not GPS quality and are dropped. */
-	private static final float MAX_USABLE_POSITION_ACCURACY_M = 100f;
-	/** Below this position accuracy an unreported speed accuracy is assumed to be good. */
-	private static final float GOOD_POSITION_ACCURACY_M = 25f;
-	private static final float ASSUMED_SPEED_SIGMA_GOOD_FIX_MPS = 0.5f;
-	private static final float ASSUMED_SPEED_SIGMA_POOR_FIX_MPS = 1.5f;
-	private static final float MAX_PLAUSIBLE_SPEED_MPS = 150f;
+	/** Sub-folder of the app's external files directory that holds debug recordings. */
+	private static final String RECORDINGS_DIRECTORY = "recordings";
 	/** Low-pass factor for the gravity estimate when only a raw accelerometer is available. */
 	private static final float RAW_GRAVITY_SMOOTHING = 0.02f;
 
@@ -111,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private final float[] gravity = new float[3];
 	private final float[] linearAcceleration = new float[3];
 	private boolean hasGravity = false;
+	private SensorRecorder recorder;
 
 	// --- UI Decoupling Handler and Interval ---
 	private static final int UI_UPDATE_INTERVAL_MS = 100; // 10Hz rendering rate
@@ -246,6 +248,19 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		statusView = findViewById(R.id.textFusionStatus);
 
+		File recordingsRoot = getExternalFilesDir(null);
+		if (recordingsRoot == null) {
+			recordingsRoot = getFilesDir();
+		}
+		recorder = new SensorRecorder(new File(recordingsRoot, RECORDINGS_DIRECTORY));
+		findViewById(R.id.textVersionString).setOnLongClickListener(new View.OnLongClickListener() {
+			@Override
+			public boolean onLongClick(View v) {
+				toggleRecording();
+				return true;
+			}
+		});
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 			Intent intent = new Intent(this, PermissionsActivity.class);
 			startActivity(intent);
@@ -350,26 +365,19 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	public void updatePosition(Location location) {
-		if (!location.hasSpeed()) {
-			return;
-		}
-		float speed = location.getSpeed();
-		if (Float.isNaN(speed) || speed < 0f || speed > MAX_PLAUSIBLE_SPEED_MPS) {
-			return;
-		}
-		if (location.hasAccuracy() && location.getAccuracy() > MAX_USABLE_POSITION_ACCURACY_M) {
-			return;
-		}
-
-		float sigma = Float.NaN;
+		long timestampNs = location.getElapsedRealtimeNanos();
+		float speed = location.hasSpeed() ? location.getSpeed() : Float.NaN;
+		float speedAccuracy = Float.NaN;
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasSpeedAccuracy()) {
-			sigma = location.getSpeedAccuracyMetersPerSecond();
+			speedAccuracy = location.getSpeedAccuracyMetersPerSecond();
 		}
-		if (Float.isNaN(sigma) || sigma <= 0f) {
-			boolean goodFix = location.hasAccuracy() && location.getAccuracy() <= GOOD_POSITION_ACCURACY_M;
-			sigma = goodFix ? ASSUMED_SPEED_SIGMA_GOOD_FIX_MPS : ASSUMED_SPEED_SIGMA_POOR_FIX_MPS;
+		float positionAccuracy = location.hasAccuracy() ? location.getAccuracy() : Float.NaN;
+		recorder.recordGps(timestampNs, speed, speedAccuracy, positionAccuracy);
+
+		if (!GpsFixPolicy.isUsable(speed, positionAccuracy)) {
+			return;
 		}
-		estimator.onGpsSpeed(location.getElapsedRealtimeNanos(), speed, sigma);
+		estimator.onGpsSpeed(timestampNs, speed, GpsFixPolicy.speedSigma(speedAccuracy, positionAccuracy));
 	}
 
 	@Override
@@ -378,8 +386,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			case Sensor.TYPE_GRAVITY:
 				System.arraycopy(event.values, 0, gravity, 0, 3);
 				hasGravity = true;
+				recorder.recordGravity(event.timestamp, gravity);
 				break;
 			case Sensor.TYPE_LINEAR_ACCELERATION:
+				recorder.recordLinearAcceleration(event.timestamp, event.values);
 				if (hasGravity) {
 					estimator.onSensorSample(event.timestamp, event.values, gravity);
 				}
@@ -395,6 +405,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 					gravity[i] += RAW_GRAVITY_SMOOTHING * (event.values[i] - gravity[i]);
 					linearAcceleration[i] = event.values[i] - gravity[i];
 				}
+				recorder.recordGravity(event.timestamp, gravity);
+				recorder.recordLinearAcceleration(event.timestamp, linearAcceleration);
 				estimator.onSensorSample(event.timestamp, linearAcceleration, gravity);
 				break;
 			default:
@@ -417,6 +429,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	private void processPeriodicUiUpdate() {
+		IOException recordingError = recorder.getLastError();
+		if (recordingError != null && recorder.isRecording()) {
+			recorder.stop();
+			Toast.makeText(this, getString(R.string.recording_failed, recordingError.getMessage()), Toast.LENGTH_LONG).show();
+		}
+
 		odometerMeters += estimator.drainDistanceMeters();
 		float speedMps = estimator.getSpeedMps();
 		float accelerationInG = estimator.getForwardAccelMps2() / SensorManager.GRAVITY_EARTH;
@@ -449,7 +467,22 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		if (!estimator.isForwardAxisKnown()) {
 			status = getString(R.string.status_learning_axis, status);
 		}
+		if (recorder.isRecording()) {
+			status = getString(R.string.status_recording, status);
+		}
 		statusView.setText(status);
+	}
+
+	/** Long-press on the version label toggles the raw sensor and GPS recording used for filter tuning. */
+	private void toggleRecording() {
+		if (recorder.isRecording()) {
+			File file = recorder.getFile();
+			recorder.stop();
+			Toast.makeText(this, getString(R.string.recording_stopped, file.getAbsolutePath()), Toast.LENGTH_LONG).show();
+		} else {
+			File file = recorder.start();
+			Toast.makeText(this, getString(R.string.recording_started, file.getAbsolutePath()), Toast.LENGTH_LONG).show();
+		}
 	}
 
 	private void updateUi(final long time, final Float speedKph, final Float energy, final Float acceleration) {
@@ -595,9 +628,16 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		locationManager.onPause();
 		sensorManager.unregisterListener(this);
 		isRunning = false;
+		recorder.flush();
 
 		uiHandler.removeCallbacks(uiRefreshRunnable);
 		super.onPause();
+	}
+
+	@Override
+	protected void onDestroy() {
+		recorder.shutdown();
+		super.onDestroy();
 	}
 
 	public static Double convertDpToPixel(double dp) {

@@ -1,5 +1,6 @@
 *.iml
 .gradle
+.kotlin
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -7,6 +8,15 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+# Per-machine Android Studio state: run targets, device manager, IDE migrations, viewer prefs
+/.idea/deploymentTargetDropDown.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+/.idea/androidTestResultsUserPreferences.xml
+/.idea/migrations.xml
+/.idea/other.xml
+/.idea/shelf
+/.idea/usage.statistics.xml
 .DS_Store
 /build
 /captures

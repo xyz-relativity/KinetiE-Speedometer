@@ -30,6 +30,12 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -236,8 +242,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		settings = getSharedPreferences(PREFS_NAME, 0);
 
 		supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setContentView(R.layout.activity_main);
+		setUpSystemBars();
 
 		String version = "";
 		try {
@@ -270,6 +276,32 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 		initChart();
 		initGauge();
+	}
+
+	/**
+	 * Full-screen dashboard: draws edge-to-edge on every supported Android version (API 35+ enforces
+	 * it anyway), hides the status and navigation bars (a swipe from the edge shows them briefly) and
+	 * pads the root so its children stay clear of the display cutout, or of the bars if they are ever
+	 * shown. The root's background still fills the whole screen.
+	 */
+	private void setUpSystemBars() {
+		Window window = getWindow();
+		WindowCompat.setDecorFitsSystemWindows(window, false);
+		WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+		controller.hide(WindowInsetsCompat.Type.systemBars());
+		controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+		// Light icons and a dark 3-button scrim for the moments the bars are swiped in.
+		controller.setAppearanceLightStatusBars(false);
+		controller.setAppearanceLightNavigationBars(false);
+
+		ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root), new OnApplyWindowInsetsListener() {
+			@Override
+			public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+				Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+				v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+				return insets;
+			}
+		});
 	}
 
 	private void initChart() {

@@ -17,7 +17,8 @@ import androidx.core.app.ActivityCompat;
 import java.util.List;
 
 /**
- * Subscribes to a single location provider, GPS when available, and forwards every new fix.
+ * Subscribes to a single location provider, GPS when available and precise location is granted,
+ * and forwards every new fix.
  *
  * <p>One provider only, on purpose: the GPS provider is the one that reports Doppler speed, and
  * mixing providers produced duplicate and stale callbacks. The speed estimator weighs each fix by
@@ -68,14 +69,20 @@ public class FuseLocationProvider implements LocationListener {
 		return activeProvider;
 	}
 
+	private boolean hasFineLocationPermission() {
+		return ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+	}
+
 	private boolean hasLocationPermission() {
-		return ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+		return hasFineLocationPermission()
 				|| ActivityCompat.checkSelfPermission(parent, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 	}
 
 	private String pickProvider() {
 		List<String> providers = locationManager.getAllProviders();
-		if (providers.contains(LocationManager.GPS_PROVIDER)) {
+		// The GPS provider needs the precise permission; with approximate location only it throws
+		// SecurityException, so fall through to a provider that accepts coarse access.
+		if (hasFineLocationPermission() && providers.contains(LocationManager.GPS_PROVIDER)) {
 			return LocationManager.GPS_PROVIDER;
 		}
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && providers.contains(LocationManager.FUSED_PROVIDER)) {

@@ -7,4 +7,8 @@
     <string name="kinetic_energy_label">Specific Energy (%s)</string>
     <string name="kinetic_energy_unit">J/kg</string>
     <string name="version">v. %s</string>
+    <string name="status_no_fix">no GPS fix</string>
+    <string name="status_gps">GPS</string>
+    <string name="status_dead_reckoning">dead reckoning %1$ds</string>
+    <string name="status_learning_axis">%1$s, learning axis</string>
 </resources>

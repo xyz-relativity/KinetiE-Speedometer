@@ -14,9 +14,11 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Window;
@@ -36,6 +38,7 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.xyz.relativity.kineticespeedometer.fusion.SpeedEstimator;
 import com.xyz.relativity.kineticespeedometer.sensors.DeviceLocationManager;
 import com.xyz.relativity.kineticespeedometer.sensors.ILocationListener;
 
@@ -58,13 +61,12 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final String SAVED_GRAPH_TIMESTAMPS = "GRAPH_TIMESTAMPS";
 	private static final String SAVED_GRAPH_VALUES = "GRAPH_VALUES";
 	private static final String SAVED_START_TIME = "START_TIME";
-	private static final String SAVED_PREV_SPEED = "PREV_SPEED";
-	private static final String SAVED_PREV_TIME = "PREV_TIME";
-	private static final String SAVED_TARGET_SPEED = "TARGET_SPEED";
-	private static final String SAVED_CURRENT_SPEED = "CURRENT_SPEED";
-	private static final String SAVED_SPEED_STEP = "SPEED_STEP";
-	private static final String SAVED_DELTA_LEFT = "DELTA_LEFT";
 	private static final String SAVED_ODOMETER = "ODOMETER";
+
+	private static final String PREFS_NAME = "configs";
+	/** Odometer in metres stored as the raw bits of a double; the float key before it lost metres past 10,000 km. */
+	private static final String PREF_ODOMETER_METERS_BITS = "odometer_meters_bits";
+	private static final String PREF_ODOMETER_LEGACY_FLOAT = "odometer";
 
 	private static final String ODOMETER_FORMAT = "%011.2f km";
 	private static final float MASS_KG = 1;
@@ -76,51 +78,45 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int MAJOR_NICK_FOR_SPEED = 20;
 	private static final int MINOR_NICK_FOR_SPEED = 10;
 
+	// --- GPS handling ---
+	/** 0 lets the hardware deliver fixes at its own rate; GPS chips rarely exceed 1 Hz anyway. */
+	private static final int GPS_MIN_UPDATE_INTERVAL_MILLISECONDS = 0;
+	/** Fixes with a worse horizontal accuracy than this are not GPS quality and are dropped. */
+	private static final float MAX_USABLE_POSITION_ACCURACY_M = 100f;
+	/** Below this position accuracy an unreported speed accuracy is assumed to be good. */
+	private static final float GOOD_POSITION_ACCURACY_M = 25f;
+	private static final float ASSUMED_SPEED_SIGMA_GOOD_FIX_MPS = 0.5f;
+	private static final float ASSUMED_SPEED_SIGMA_POOR_FIX_MPS = 1.5f;
+	private static final float MAX_PLAUSIBLE_SPEED_MPS = 150f;
+	/** Low-pass factor for the gravity estimate when only a raw accelerometer is available. */
+	private static final float RAW_GRAVITY_SMOOTHING = 0.02f;
+
 	private LineChart chart;
 	private TextView odometerView;
+	private TextView statusView;
 
 	long startTime = System.currentTimeMillis();
-	float prevSpeed = 0;
-	float prevTime = 0;
-	float targetSpeedMps = 0;
-	float currentSpeedMps = targetSpeedMps;
-	float speedStep = 0;
-	float deltaLeft = 0;
 
 	private Gauge gaugeView;
 	private boolean isRunning = false;
 	private double odometerMeters;
 	private SharedPreferences settings;
 
-	// --- State Variables ---
-	private float fusedSpeedMps = 0.0f;
-	private long lastSensorTimestampNs = 0;
-	private boolean hasFirstGpsFix = false;
-
-	// --- Rotation and Orientation Matrices ---
-	private final float[] rotationMatrix = new float[9];
-	private final float[] localAcceleration = new float[3];
-	private final float[] worldAcceleration = new float[3];
-
-	private float gpsDirectionX = 0.0f;
-	private float gpsDirectionY = 0.0f;
-	private boolean hasMovementDirection = false;
-
-	private static final float FILTER_TIME_CONSTANT_SEC = 0.20f;
-	private long lastGpsTimestampNs = 0;
-
-	private static final float ACCEL_NOISE_DEADZONE = 0.10f;
-	private static final float ACCEL_SMOOTHING_ALPHA = 0.1f;
-
-	private float smoothedAcceleration = 0.01f;
+	// --- Sensor fusion ---
+	private final SpeedEstimator estimator = new SpeedEstimator();
+	private SensorManager sensorManager;
+	private Sensor linearAccelerationSensor;
+	private Sensor gravitySensor;
+	private Sensor rawAccelerometerSensor;
+	private final float[] gravity = new float[3];
+	private final float[] linearAcceleration = new float[3];
+	private boolean hasGravity = false;
 
 	// --- UI Decoupling Handler and Interval ---
 	private static final int UI_UPDATE_INTERVAL_MS = 100; // 10Hz rendering rate
-	private long lastUiUpdateTimeMs = 0;
 
 	// --- Tuning Constants ---
 	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
-	private static final int GPS_UPDATE_INTERVAL_MILLISECONDS = 250;
 	private static final int GRAPH_DATA_WINDOW_SECONDS = 4 * 60; // 4-minute rolling window
 	private static final int GRAPH_MAX_SAMPLES_PER_SECOND = 1000 / UI_UPDATE_INTERVAL_MS; // samples per second (10)
 	private static final int GRAPH_MAX_SAMPLES = GRAPH_DATA_WINDOW_SECONDS * GRAPH_MAX_SAMPLES_PER_SECOND;
@@ -130,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		@Override
 		public void run() {
 			if (isRunning) {
-				processPeriodicUiUpdate(fusedSpeedMps, smoothedAcceleration);
+				processPeriodicUiUpdate();
 				uiHandler.postDelayed(this, UI_UPDATE_INTERVAL_MS);
 			}
 		}
@@ -169,12 +165,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	public void onSaveInstanceState(@NonNull Bundle savedInstanceState){
 		super.onSaveInstanceState(savedInstanceState);
 		savedInstanceState.putLong(SAVED_START_TIME, startTime);
-		savedInstanceState.putFloat(SAVED_PREV_SPEED, prevSpeed);
-		savedInstanceState.putFloat(SAVED_PREV_TIME, prevTime);
-		savedInstanceState.putFloat(SAVED_TARGET_SPEED, targetSpeedMps);
-		savedInstanceState.putFloat(SAVED_CURRENT_SPEED, currentSpeedMps);
-		savedInstanceState.putFloat(SAVED_SPEED_STEP, speedStep);
-		savedInstanceState.putFloat(SAVED_DELTA_LEFT, deltaLeft);
 		savedInstanceState.putDouble(SAVED_ODOMETER, odometerMeters);
 
 		LineData lineData = chart.getData();
@@ -203,12 +193,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	public void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
 		super.onRestoreInstanceState(savedInstanceState);
 		startTime = savedInstanceState.getLong(SAVED_START_TIME);
-		prevSpeed = savedInstanceState.getFloat(SAVED_PREV_SPEED);
-		prevTime = savedInstanceState.getFloat(SAVED_PREV_TIME);
-		targetSpeedMps = savedInstanceState.getFloat(SAVED_TARGET_SPEED);
-		currentSpeedMps = savedInstanceState.getFloat(SAVED_CURRENT_SPEED);
-		speedStep = savedInstanceState.getFloat(SAVED_SPEED_STEP);
-		deltaLeft = savedInstanceState.getFloat(SAVED_DELTA_LEFT);
 		odometerMeters = savedInstanceState.getDouble(SAVED_ODOMETER);
 
 		long[] timestamps = savedInstanceState.getLongArray(SAVED_GRAPH_TIMESTAMPS);
@@ -229,8 +213,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	protected void onStart() {
 		super.onStart();
-		if (settings.contains("odometer")) {
-			odometerMeters = settings.getFloat("odometer", 0f);
+		if (settings.contains(PREF_ODOMETER_METERS_BITS)) {
+			odometerMeters = Double.longBitsToDouble(settings.getLong(PREF_ODOMETER_METERS_BITS, 0L));
+		} else if (settings.contains(PREF_ODOMETER_LEGACY_FLOAT)) {
+			odometerMeters = settings.getFloat(PREF_ODOMETER_LEGACY_FLOAT, 0f);
 		}
 	}
 
@@ -238,14 +224,14 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
-		Sensor accel = sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+		if (linearAccelerationSensor == null || gravitySensor == null) {
+			rawAccelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		}
 
-		sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
-		sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_GAME);
-
-		settings = getSharedPreferences("configs", 0);
+		settings = getSharedPreferences(PREFS_NAME, 0);
 
 		supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -258,12 +244,14 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 			((TextView) findViewById(R.id.textVersionString)).setText(version);
 		} catch (PackageManager.NameNotFoundException ignore) {}
 
+		statusView = findViewById(R.id.textFusionStatus);
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 			Intent intent = new Intent(this, PermissionsActivity.class);
 			startActivity(intent);
 		}
 
-		locationManager = new DeviceLocationManager(this, GPS_UPDATE_INTERVAL_MILLISECONDS, this);
+		locationManager = new DeviceLocationManager(this, GPS_MIN_UPDATE_INTERVAL_MILLISECONDS, this);
 
 		initChart();
 		initGauge();
@@ -362,112 +350,107 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	public void updatePosition(Location location) {
-		if (location.hasSpeed() && location.getAccuracy() < 12.0f ) {
-			targetSpeedMps = location.getSpeed();
-
-			if (targetSpeedMps > 1.0f && location.hasBearing()) {
-				double bearingRad = Math.toRadians(location.getBearing());
-				gpsDirectionX = (float) Math.sin(bearingRad);
-				gpsDirectionY = (float) Math.cos(bearingRad);
-				hasMovementDirection = true;
-			}
-
-			long currentTimestampNs = location.getElapsedRealtimeNanos();
-
-			if (!hasFirstGpsFix || lastGpsTimestampNs == 0) {
-				fusedSpeedMps = targetSpeedMps;
-				hasFirstGpsFix = true;
-				lastGpsTimestampNs = currentTimestampNs;
-				return;
-			}
-
-			float dt = (currentTimestampNs - lastGpsTimestampNs) / 1_000_000_000.0f;
-			lastGpsTimestampNs = currentTimestampNs;
-
-			if (dt <= 0.0f) dt = 0.01f;
-			if (dt > 2.0f) dt = 0.25f;
-
-			float dynamicAlpha = (float) Math.exp(-dt / FILTER_TIME_CONSTANT_SEC);
-			fusedSpeedMps = (dynamicAlpha * fusedSpeedMps) +
-					((1.0f - dynamicAlpha) * targetSpeedMps);
+		if (!location.hasSpeed()) {
+			return;
 		}
+		float speed = location.getSpeed();
+		if (Float.isNaN(speed) || speed < 0f || speed > MAX_PLAUSIBLE_SPEED_MPS) {
+			return;
+		}
+		if (location.hasAccuracy() && location.getAccuracy() > MAX_USABLE_POSITION_ACCURACY_M) {
+			return;
+		}
+
+		float sigma = Float.NaN;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasSpeedAccuracy()) {
+			sigma = location.getSpeedAccuracyMetersPerSecond();
+		}
+		if (Float.isNaN(sigma) || sigma <= 0f) {
+			boolean goodFix = location.hasAccuracy() && location.getAccuracy() <= GOOD_POSITION_ACCURACY_M;
+			sigma = goodFix ? ASSUMED_SPEED_SIGMA_GOOD_FIX_MPS : ASSUMED_SPEED_SIGMA_POOR_FIX_MPS;
+		}
+		estimator.onGpsSpeed(location.getElapsedRealtimeNanos(), speed, sigma);
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-			SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+		switch (event.sensor.getType()) {
+			case Sensor.TYPE_GRAVITY:
+				System.arraycopy(event.values, 0, gravity, 0, 3);
+				hasGravity = true;
+				break;
+			case Sensor.TYPE_LINEAR_ACCELERATION:
+				if (hasGravity) {
+					estimator.onSensorSample(event.timestamp, event.values, gravity);
+				}
+				break;
+			case Sensor.TYPE_ACCELEROMETER:
+				// Fallback for devices without the virtual gravity / linear acceleration sensors.
+				if (!hasGravity) {
+					System.arraycopy(event.values, 0, gravity, 0, 3);
+					hasGravity = true;
+					break;
+				}
+				for (int i = 0; i < 3; i++) {
+					gravity[i] += RAW_GRAVITY_SMOOTHING * (event.values[i] - gravity[i]);
+					linearAcceleration[i] = event.values[i] - gravity[i];
+				}
+				estimator.onSensorSample(event.timestamp, linearAcceleration, gravity);
+				break;
+			default:
+				break;
+		}
+	}
+
+	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+
+	private void registerSensors() {
+		hasGravity = false;
+		if (rawAccelerometerSensor != null) {
+			sensorManager.registerListener(this, rawAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
 			return;
 		}
-
-		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-			long currentTimestampNs = event.timestamp;
-			if (lastSensorTimestampNs == 0) {
-				lastSensorTimestampNs = currentTimestampNs;
-				return;
-			}
-
-			float dt = (currentTimestampNs - lastSensorTimestampNs) / 1000000000.0f;
-			lastSensorTimestampNs = currentTimestampNs;
-
-			localAcceleration[0] = event.values[0];
-			localAcceleration[1] = event.values[1];
-			localAcceleration[2] = event.values[2];
-
-			multiplyMatrixVector(rotationMatrix, localAcceleration, worldAcceleration);
-
-			float stepAcceleration = 0.0f;
-			if (hasMovementDirection) {
-				stepAcceleration = (worldAcceleration[0] * gpsDirectionX) + (worldAcceleration[1] * gpsDirectionY);
-			} else {
-				stepAcceleration = (float) Math.sqrt((worldAcceleration[0] * worldAcceleration[0]) + (worldAcceleration[1] * worldAcceleration[1]));
-			}
-
-			if (Math.abs(stepAcceleration) < ACCEL_NOISE_DEADZONE) {
-				stepAcceleration = 0.0f;
-			}
-
-			smoothedAcceleration = (ACCEL_SMOOTHING_ALPHA * stepAcceleration) +
-					((1.0f - ACCEL_SMOOTHING_ALPHA) * smoothedAcceleration);
-
-			fusedSpeedMps += smoothedAcceleration * dt;
-
-			if (fusedSpeedMps < 0.1f) {
-				fusedSpeedMps = 0.0f;
-			}
+		if (gravitySensor != null && linearAccelerationSensor != null) {
+			sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_GAME);
+			sensorManager.registerListener(this, linearAccelerationSensor, SensorManager.SENSOR_DELAY_GAME);
 		}
 	}
 
-	private void multiplyMatrixVector(float[] matrix, float[] vector, float[] result) {
-		result[0] = matrix[0] * vector[0] + matrix[1] * vector[1] + matrix[2] * vector[2];
-		result[1] = matrix[3] * vector[0] + matrix[4] * vector[1] + matrix[5] * vector[2];
-		result[2] = matrix[6] * vector[0] + matrix[7] * vector[1] + matrix[8] * vector[2];
-	}
+	private void processPeriodicUiUpdate() {
+		odometerMeters += estimator.drainDistanceMeters();
+		float speedMps = estimator.getSpeedMps();
+		float accelerationInG = estimator.getForwardAccelMps2() / SensorManager.GRAVITY_EARTH;
 
-	private void processPeriodicUiUpdate(float speedMps, float acceleration) {
 		long currentSystemTime = System.currentTimeMillis();
-		if (lastUiUpdateTimeMs != 0) {
-			float dtUi = (currentSystemTime - lastUiUpdateTimeMs) / 1000.0f;
-			if (dtUi > 0 && dtUi < 2.0f) {
-				// Accumulate distance using current speed over elapsed UI time delta
-				odometerMeters += speedMps * dtUi;
-			}
-		}
-		lastUiUpdateTimeMs = currentSystemTime;
-
-		float accelerationInG = acceleration / SensorManager.GRAVITY_EARTH;
-
 		long time = (currentSystemTime - startTime);
 		if (time < 0) {
 			startTime = currentSystemTime;
 			time = 0;
-			prevTime = 0;
 		}
 
+		updateStatusView();
 		updateUi(time, speedMps * 3.6f, (ONE_HALF_MASS_KG * speedMps * speedMps), accelerationInG);
 	}
 
-	@Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+	private void updateStatusView() {
+		long nowNs = SystemClock.elapsedRealtimeNanos();
+		String status;
+		switch (estimator.getMode(nowNs)) {
+			case GPS:
+				status = getString(R.string.status_gps);
+				break;
+			case DEAD_RECKONING:
+				status = getString(R.string.status_dead_reckoning, Math.round(estimator.secondsSinceGps(nowNs)));
+				break;
+			default:
+				status = getString(R.string.status_no_fix);
+				break;
+		}
+		if (!estimator.isForwardAxisKnown()) {
+			status = getString(R.string.status_learning_axis, status);
+		}
+		statusView.setText(status);
+	}
 
 	private void updateUi(final long time, final Float speedKph, final Float energy, final Float acceleration) {
 		final LineData data = chart.getData();
@@ -593,8 +576,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	protected void onResume() {
 		super.onResume();
 		isRunning = true;
-		lastUiUpdateTimeMs = System.currentTimeMillis();
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		registerSensors();
 		locationManager.onResume();
 
 		uiHandler.post(uiRefreshRunnable);
@@ -602,12 +585,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	@Override
 	protected void onPause() {
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("odometer", (float) odometerMeters);
-		editor.apply();
+		odometerMeters += estimator.drainDistanceMeters();
+		settings.edit()
+				.putLong(PREF_ODOMETER_METERS_BITS, Double.doubleToRawLongBits(odometerMeters))
+				.remove(PREF_ODOMETER_LEGACY_FLOAT)
+				.apply();
 
 		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		locationManager.onPause();
+		sensorManager.unregisterListener(this);
 		isRunning = false;
 
 		uiHandler.removeCallbacks(uiRefreshRunnable);

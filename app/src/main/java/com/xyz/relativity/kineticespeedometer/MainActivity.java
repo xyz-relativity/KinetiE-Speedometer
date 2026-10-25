@@ -128,6 +128,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final int GRAPH_DATA_WINDOW_SECONDS = 4 * 60; // 4-minute rolling window
 	private static final int GRAPH_MAX_SAMPLES_PER_SECOND = 1000 / UI_UPDATE_INTERVAL_MS; // samples per second (10)
 	private static final int GRAPH_MAX_SAMPLES = GRAPH_DATA_WINDOW_SECONDS * GRAPH_MAX_SAMPLES_PER_SECOND;
+	/** The acceleration axis never zooms in tighter than this, in g, so noise around zero does not fill the chart. */
+	private static final float ACCELERATION_AXIS_MIN_RANGE_G = 0.5f;
 
 	private final Handler uiHandler = new Handler(Looper.getMainLooper());
 	private final Runnable uiRefreshRunnable = new Runnable() {
@@ -279,18 +281,15 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	}
 
 	/**
-	 * Full-screen dashboard: draws edge-to-edge on every supported Android version (API 35+ enforces
-	 * it anyway), hides the status and navigation bars (a swipe from the edge shows them briefly) and
-	 * pads the root so its children stay clear of the display cutout, or of the bars if they are ever
-	 * shown. The root's background still fills the whole screen.
+	 * Edge to edge with the status and navigation bars visible: the window draws behind them, the
+	 * bars are transparent (see the theme) so the background shows through, and the root view is
+	 * padded by the bar insets so nothing sits underneath them.
 	 */
 	private void setUpSystemBars() {
 		Window window = getWindow();
 		WindowCompat.setDecorFitsSystemWindows(window, false);
 		WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
-		controller.hide(WindowInsetsCompat.Type.systemBars());
-		controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-		// Light icons and a dark 3-button scrim for the moments the bars are swiped in.
+		// Light icons on the dark background.
 		controller.setAppearanceLightStatusBars(false);
 		controller.setAppearanceLightNavigationBars(false);
 
@@ -535,6 +534,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		}
 
 		data.notifyDataChanged();
+		clampAccelerationAxis(data);
 
 		if (isRunning) {
 			odometerView.setText(String.format(Locale.getDefault(), ODOMETER_FORMAT, odometerMeters / 1000.0));
@@ -546,6 +546,21 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 			chart.invalidate();
 		}
+	}
+
+	/**
+	 * Keeps the acceleration axis symmetric around zero and at least +/- the minimum range, while
+	 * still growing when the data goes beyond it. Auto-scaling alone shrinks the axis to the noise.
+	 */
+	private void clampAccelerationAxis(LineData data) {
+		ILineDataSet accelerationData = data.getDataSetByIndex(LineGraphs.ACCELERATION.ordinal());
+		float range = ACCELERATION_AXIS_MIN_RANGE_G;
+		if (accelerationData != null && accelerationData.getEntryCount() > 0) {
+			range = Math.max(range, Math.max(Math.abs(accelerationData.getYMin()), Math.abs(accelerationData.getYMax())));
+		}
+		YAxis axis = LineGraphs.ACCELERATION.dependency == YAxis.AxisDependency.RIGHT ? chart.getAxisRight() : chart.getAxisLeft();
+		axis.setAxisMinimum(-range);
+		axis.setAxisMaximum(range);
 	}
 
 	private void configureAxis(LineChart chart) {

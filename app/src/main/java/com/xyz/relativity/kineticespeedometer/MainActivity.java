@@ -501,7 +501,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		if (recorder.isRecording()) {
 			status = getString(R.string.status_recording, status);
 		}
-		statusView.setText(status);
+		if (statusView != null) {
+			statusView.setText(status);
+		}
 	}
 
 	/** Long-press on the version label toggles the raw sensor and GPS recording used for filter tuning. */

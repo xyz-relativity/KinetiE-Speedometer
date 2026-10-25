@@ -21,6 +21,17 @@
         android:textSize="12sp"
         />
 
+    <TextView
+        android:id="@+id/textFusionStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:text=""
+        android:textColor="#77777777"
+        android:textSize="12sp"
+        />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"

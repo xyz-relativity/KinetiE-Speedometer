@@ -1,19 +1,65 @@
 <resources>
 
-    <!-- Base application theme. -->
-    <!--    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">-->
-    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
-        <!-- Customize your theme here. -->
+    <!-- Main screen: no action bar, palette switches with the night mode chosen in settings. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:textColor">#AAAAAA</item>
+        <item name="android:windowBackground">@color/screen_background</item>
+        <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <style name="energyTextView">
-        <item name="android:textColor">#FFFF0000</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">20sp</item>
+    <!-- Settings: standard action bar on the same background. -->
+    <style name="AppTheme.Settings" parent="Theme.AppCompat.DayNight">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/screen_background</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+
+    <style name="StatusChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:background">@drawable/chip_outline</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <style name="ReadoutTile">
+        <item name="android:background">@drawable/readout_tile</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingEnd">6dp</item>
+    </style>
+
+    <style name="ReadoutLabel">
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="ReadoutValue">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <style name="Odometer">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFeatureSettings">tnum</item>
     </style>
 
 </resources>

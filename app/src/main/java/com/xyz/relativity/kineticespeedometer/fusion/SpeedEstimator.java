@@ -53,6 +53,7 @@ public final class SpeedEstimator {
 	private boolean hasSample;
 	private long lastGpsNs;
 	private float lastGpsSpeed;
+	private float lastGpsSigma = Float.NaN;
 	private boolean hasGps;
 	private long accelWindowStartNs;
 	private float accelWindowStartSpeed;
@@ -153,6 +154,7 @@ public final class SpeedEstimator {
 
 		lastGpsNs = tMeas;
 		lastGpsSpeed = speedMps;
+		lastGpsSigma = sigma;
 		hasGps = true;
 	}
 
@@ -182,6 +184,11 @@ public final class SpeedEstimator {
 			return Mode.NO_FIX;
 		}
 		return nowNs - lastGpsNs > GPS_STALE_NS ? Mode.DEAD_RECKONING : Mode.GPS;
+	}
+
+	/** One-sigma speed accuracy of the last accepted fix after clamping (m/s), NaN before the first one. */
+	public float getLastGpsSigmaMps() {
+		return lastGpsSigma;
 	}
 
 	/** Seconds since the last accepted fix, NaN before the first one. */

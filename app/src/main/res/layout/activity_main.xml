@@ -6,82 +6,214 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity"
-    android:background="@drawable/carbon_fiber">
+    android:background="@color/screen_background"
+    tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/textVersionString"
+    <LinearLayout
+        android:id="@+id/statusRow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
-        android:text="2020.06"
-        android:textColor="#77777777"
-        android:textSize="12sp"
-        />
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/textFusionStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        <TextView
+            android:id="@+id/chipGps"
+            style="@style/StatusChip"
+            android:drawableStart="@drawable/status_dot"
+            android:drawablePadding="6dp"
+            android:text="@string/chip_no_fix" />
+
+        <TextView
+            android:id="@+id/chipDeadReckoning"
+            style="@style/StatusChip"
+            android:textColor="@color/status_fair"
+            android:visibility="gone"
+            android:text="@string/chip_dead_reckoning"
+            tools:text="DR 12s"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/chipCalibrating"
+            style="@style/StatusChip"
+            android:visibility="gone"
+            android:text="@string/chip_calibrating"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/chipRecording"
+            style="@style/StatusChip"
+            android:textColor="@color/chip_recording"
+            android:visibility="gone"
+            android:text="@string/chip_recording"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/buttonSettings"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:text=""
-        android:textColor="#77777777"
-        android:textSize="12sp"
-        />
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/settings_title"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_settings"
+        app:tint="@color/text_muted" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        >
+        android:orientation="vertical">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.6"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            >
+            android:paddingTop="30dp">
 
             <de.nitri.gauge.Gauge
                 android:id="@+id/gauge"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:adjustViewBounds="true"
                 app:layout_constraintDimensionRatio="1:1"
-                gauge:faceColor="#22ffffff"
-                gauge:rimColor="#22ffffff"
-                gauge:nickLabelTextSize="14sp"
-                gauge:lowerText="0"
-                gauge:lowerTextColor="#ffff0000"
-                gauge:lowerTextUnit="Jouls"
-                gauge:scaleColor="#ff00ff00"
+                gauge:flat="true"
+                gauge:arc="true"
+                gauge:arcColor="@color/accent_energy"
+                gauge:faceColor="@color/gauge_face"
+                gauge:rimColor="@color/gauge_rim"
+                gauge:scaleColor="@color/gauge_tick"
+                gauge:needleColor="@color/accent_speed"
+                gauge:needleShadow="false"
+                gauge:nickLabelTextSize="18sp"
                 gauge:upperText="0"
-                gauge:upperTextColor="#ff00ff00"
-                gauge:upperTextUnit="Km/h"
-                app:layout_constraintBottom_toTopOf="@+id/odometer"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
+                gauge:upperTextColor="@color/text_primary"
+                gauge:upperTextUnit="@string/unit_kph"
+                gauge:lowerText=""
+                gauge:lowerTextUnit=""
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintVertical_chainStyle="packed"
-                />
-
-            <TextView
-                android:id="@+id/odometer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="5dp"
-                android:textAlignment="center"
-                android:textStyle="bold"
-                android:textColor="#ffaaaaaa"
-                android:text="00000000.00 km"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toTopOf="@+id/readouts"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintVertical_chainStyle="packed" />
+
+            <LinearLayout
+                android:id="@+id/readouts"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
                 app:layout_constraintTop_toBottomOf="@+id/gauge"
-                app:layout_constraintVertical_chainStyle="packed"
-                />
+                app:layout_constraintBottom_toTopOf="@+id/tripRow"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <LinearLayout
+                    style="@style/ReadoutTile"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp">
+
+                    <TextView
+                        style="@style/ReadoutLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/readout_fall" />
+
+                    <TextView
+                        android:id="@+id/readoutEnergy"
+                        style="@style/ReadoutValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/accent_energy"
+                        android:text="0" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/ReadoutTile"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp">
+
+                    <TextView
+                        style="@style/ReadoutLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/readout_acceleration" />
+
+                    <TextView
+                        android:id="@+id/readoutAcceleration"
+                        style="@style/ReadoutValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0.00" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/ReadoutTile"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+
+                    <TextView
+                        style="@style/ReadoutLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/readout_max_speed" />
+
+                    <TextView
+                        android:id="@+id/readoutMaxSpeed"
+                        style="@style/ReadoutValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tripRow"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintTop_toBottomOf="@+id/readouts"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <TextView
+                    android:id="@+id/tripSummary"
+                    style="@style/Odometer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0.0 km trip, 0 min"
+                    tools:text="12.4 km trip, 42 min, avg 31 km/h" />
+
+                <TextView
+                    android:id="@+id/odometer"
+                    style="@style/Odometer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="0.0 km total"
+                    tools:text="167.5 km total" />
+            </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <com.github.mikephil.charting.charts.LineChart
@@ -89,7 +221,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.4"
-            android:background="#00ffffff" />
+            android:background="@android:color/transparent" />
 
     </LinearLayout>
 

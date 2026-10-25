@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night palette: flat near-black surfaces, two accents, neutral greys for everything else. -->
+    <color name="colorPrimary">#0B0B0B</color>
+    <color name="colorPrimaryDark">#0B0B0B</color>
+    <color name="colorAccent">#5DCAA5</color>
+
+    <color name="screen_background">#0B0B0B</color>
+    <color name="surface_tile">#161614</color>
+    <color name="gauge_face">#121210</color>
+    <color name="gauge_rim">#2C2C2A</color>
+    <color name="gauge_tick">#888780</color>
+    <color name="text_primary">#F1EFE8</color>
+    <color name="text_secondary">#B4B2A9</color>
+    <color name="text_muted">#888780</color>
+    <color name="accent_speed">#5DCAA5</color>
+    <color name="accent_energy">#FAC775</color>
+
+    <!-- Status chips. -->
+    <color name="chip_stroke">#444441</color>
+    <color name="status_good">#5DCAA5</color>
+    <color name="status_fair">#FAC775</color>
+    <color name="status_bad">#E24B4A</color>
+    <color name="chip_recording">#F0997B</color>
+</resources>

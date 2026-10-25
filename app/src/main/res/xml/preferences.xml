@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/pref_category_display">
+
+        <ListPreference
+            android:key="speed_unit"
+            android:title="@string/pref_speed_unit"
+            android:entries="@array/speed_unit_entries"
+            android:entryValues="@array/speed_unit_values"
+            android:defaultValue="kph"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:key="gauge_max"
+            android:title="@string/pref_gauge_max"
+            android:dialogMessage="@string/pref_gauge_max_dialog"
+            android:defaultValue="200" />
+
+        <ListPreference
+            android:key="theme"
+            android:title="@string/pref_theme"
+            android:entries="@array/theme_entries"
+            android:entryValues="@array/theme_values"
+            android:defaultValue="night"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_energy">
+
+        <EditTextPreference
+            android:key="vehicle_mass"
+            android:title="@string/pref_vehicle_mass"
+            android:dialogMessage="@string/pref_vehicle_mass_dialog" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_developer">
+
+        <SwitchPreferenceCompat
+            android:key="record_sensors"
+            android:title="@string/pref_record_sensors"
+            android:summary="@string/pref_record_sensors_summary"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_about">
+
+        <Preference
+            android:key="version"
+            android:title="@string/pref_version"
+            android:selectable="false" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

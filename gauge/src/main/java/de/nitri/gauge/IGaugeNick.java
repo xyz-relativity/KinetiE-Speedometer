@@ -1,6 +1,9 @@
 package de.nitri.gauge;
 
 public interface IGaugeNick {
+	/** Whether the thin nick for this scale position is drawn at all. */
+	boolean shouldDrawNick(int nick, float value);
+
 	boolean shouldDrawMajorNick(int nick, float value);
 
 	int getMajorNicColor(int nick, float value);

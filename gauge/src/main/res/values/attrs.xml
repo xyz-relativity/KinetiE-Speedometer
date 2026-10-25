@@ -18,6 +18,12 @@
         <attr name="rimColor" format="color" />
         <attr name="scaleColor" format="color" />
         <attr name="needleShadow" format="boolean" />
+        <attr name="flat" format="boolean" />
+        <attr name="arc" format="boolean" />
+        <attr name="textGlow" format="boolean" />
+        <attr name="arcWidth" format="dimension" />
+        <attr name="arcColor" format="color" />
+        <attr name="needle" format="boolean" />
         <attr name="needleColor" format="color" />
         <attr name="textSize" format="dimension" />
 

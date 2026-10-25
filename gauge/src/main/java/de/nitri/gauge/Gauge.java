@@ -39,6 +39,11 @@ public class Gauge extends View {
 	private static final float TEXT_GLOW_BLUR_RATIO = 0.5f;
 	private IGaugeNick gaugeNick = new IGaugeNick() {
 		@Override
+		public boolean shouldDrawNick(int nick, float value) {
+			return true;
+		}
+
+		@Override
 		public int getNicColor(int nick, float value) {
 			return scaleColor;
 		}
@@ -130,6 +135,30 @@ public class Gauge extends View {
 	private Paint labelPaint;
 	private long lastMoveTime;
 	private boolean needleShadow = true;
+	/** Flat style: no gradients, glows, shadows or blur; units sit under their values. */
+	private boolean flat = false;
+	/** Arc style: a track around the dial, filled up to the value, takes the place of the rim. */
+	private boolean arc = false;
+	/** Whether the needle and its hub are drawn; off, the readouts move to the centre. */
+	private boolean drawNeedle = true;
+	private int arcColor;
+	/** Soft halo in the text's own colour behind every text; the flat style keeps it but drops the hard outline. */
+	private boolean textGlow = true;
+	private float requestedArcWidth = 0;
+	private float arcWidth;
+	private RectF arcRect;
+	private Paint arcTrackPaint;
+	private Paint arcFillPaint;
+	private static final float DEFAULT_ARC_WIDTH_FRACTION = 0.05f;
+	private static final float ARC_SCALE_GAP_FRACTION = 0.015f;
+	private static final float ARC_LABEL_RADIUS_FRACTION = 0.74f;
+	/** A value of zero still shows as a dot at the start of the track. */
+	private static final float MIN_ARC_SWEEP_DEGREES = 0.1f;
+	/** Flat layout with a needle: value blocks above and below the hub, as fractions of the radius. */
+	private static final float FLAT_UPPER_TEXT_OFFSET = 0.36f;
+	private static final float FLAT_LOWER_TEXT_OFFSET = 0.30f;
+	/** Unit baseline relative to its value: half the value height plus a bit of the unit height. */
+	private static final float UNIT_GAP_FACTOR = 0.65f;
 	private int faceColor;
 	private int rimColor;
 	private int scaleColor;
@@ -191,16 +220,22 @@ public class Gauge extends View {
 		upperTextColor = a.getColor(R.styleable.Gauge_upperTextColor, 0x9f004d0f);
 		lowerTextColor = a.getColor(R.styleable.Gauge_lowerTextColor, 0x9f004d0f);
 		needleColor = a.getColor(R.styleable.Gauge_needleColor, Color.RED);
+		arcColor = a.getColor(R.styleable.Gauge_arcColor, needleColor);
+		drawNeedle = a.getBoolean(R.styleable.Gauge_needle, drawNeedle);
 		needleShadow = a.getBoolean(R.styleable.Gauge_needleShadow, needleShadow);
+		flat = a.getBoolean(R.styleable.Gauge_flat, flat);
+		arc = a.getBoolean(R.styleable.Gauge_arc, arc);
+		textGlow = a.getBoolean(R.styleable.Gauge_textGlow, textGlow);
+		requestedArcWidth = a.getDimension(R.styleable.Gauge_arcWidth, requestedArcWidth);
 		requestedTextSize = a.getDimension(R.styleable.Gauge_textSize, requestedTextSize);
 		upperText = a.getString(R.styleable.Gauge_upperText) == null ? upperText : fromHtml(a.getString(R.styleable.Gauge_upperText)).toString();
 		upperTextUnit = a.getString(R.styleable.Gauge_upperTextUnit) == null ? upperTextUnit : fromHtml(a.getString(R.styleable.Gauge_upperTextUnit)).toString();
 		lowerText = a.getString(R.styleable.Gauge_lowerText) == null ? lowerText : fromHtml(a.getString(R.styleable.Gauge_lowerText)).toString();
 		lowerTextUnit = a.getString(R.styleable.Gauge_lowerTextUnit) == null ? lowerTextUnit : fromHtml(a.getString(R.styleable.Gauge_lowerTextUnit)).toString();
 		requestedUpperTextSize = a.getDimension(R.styleable.Gauge_upperTextSize, 0);
-		requestedUpperUnitTextSize = a.getDimension(R.styleable.Gauge_upperTextSize, 0);
+		requestedUpperUnitTextSize = a.getDimension(R.styleable.Gauge_upperTextUnitSize, 0);
 		requestedLowerTextSize = a.getDimension(R.styleable.Gauge_lowerTextSize, 0);
-		requestedLowerUnitTextSize = a.getDimension(R.styleable.Gauge_lowerTextSize, 0);
+		requestedLowerUnitTextSize = a.getDimension(R.styleable.Gauge_lowerTextUnitSize, 0);
 		a.recycle();
 
 		initValues();
@@ -261,15 +296,18 @@ public class Gauge extends View {
 
 		scalePaint.setAntiAlias(true);
 		scalePaint.setColor(scaleColor);
-		scalePaint.setMaskFilter(new BlurMaskFilter(0.5f, BlurMaskFilter.Blur.NORMAL));
+		if (!flat) {
+			scalePaint.setMaskFilter(new BlurMaskFilter(0.5f, BlurMaskFilter.Blur.NORMAL));
+		}
 
 		labelPaint = new Paint();
 		labelPaint.setColor(scaleColor);
 		labelPaint.setTextAlign(Paint.Align.CENTER);
 		labelPaint.setSubpixelText(true);
-		labelPaint.setFakeBoldText(true);
+		labelPaint.setFakeBoldText(!flat);
 		labelPaint.setAntiAlias(true);
-		labelPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+		labelPaint.setTypeface(flat ? Typeface.DEFAULT : Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+		labelPaint.setFontFeatureSettings("tnum");
 
 		upperTextPaint = new Paint();
 		upperTextPaint.setColor(upperTextColor);
@@ -277,6 +315,7 @@ public class Gauge extends View {
 		upperTextPaint.setAntiAlias(true);
 		upperTextPaint.setTypeface(Typeface.SANS_SERIF);
 		upperTextPaint.setTextAlign(Paint.Align.CENTER);
+		upperTextPaint.setFontFeatureSettings("tnum");
 
 		upperTextUnitPaint = new Paint();
 		upperTextUnitPaint.setColor(upperTextColor);
@@ -291,6 +330,7 @@ public class Gauge extends View {
 		lowerTextPaint.setAntiAlias(true);
 		lowerTextPaint.setTypeface(Typeface.SANS_SERIF);
 		lowerTextPaint.setTextAlign(Paint.Align.CENTER);
+		lowerTextPaint.setFontFeatureSettings("tnum");
 
 		lowerTextUnitPaint = new Paint();
 		lowerTextUnitPaint.setColor(lowerTextColor);
@@ -298,6 +338,18 @@ public class Gauge extends View {
 		lowerTextUnitPaint.setAntiAlias(true);
 		lowerTextUnitPaint.setTypeface(Typeface.SANS_SERIF);
 		lowerTextUnitPaint.setTextAlign(Paint.Align.CENTER);
+
+		arcTrackPaint = new Paint();
+		arcTrackPaint.setAntiAlias(true);
+		arcTrackPaint.setStyle(Paint.Style.STROKE);
+		arcTrackPaint.setStrokeCap(Paint.Cap.ROUND);
+		arcTrackPaint.setColor(rimColor);
+
+		arcFillPaint = new Paint();
+		arcFillPaint.setAntiAlias(true);
+		arcFillPaint.setStyle(Paint.Style.STROKE);
+		arcFillPaint.setStrokeCap(Paint.Cap.ROUND);
+		arcFillPaint.setColor(arcColor);
 
 		needlePaint = new Paint();
 		needlePaint.setColor(needleColor);
@@ -307,21 +359,33 @@ public class Gauge extends View {
 		needlePath = new Path();
 
 		needleScrewPaint = new Paint();
-		needleScrewPaint.setColor(Color.BLACK);
+		needleScrewPaint.setColor(flat ? faceColor : Color.BLACK);
 		needleScrewPaint.setAntiAlias(true);
+
+		if (canvasWidth > 0 && canvasHeight > 0) {
+			// Paints were rebuilt after layout: restore text sizes, stroke widths and shaders.
+			onSizeChanged((int) canvasWidth, (int) canvasHeight, (int) canvasWidth, (int) canvasHeight);
+		}
 	}
 
 	@Override
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 
-		drawRim(canvas);
-		drawFace(canvas);
+		if (arc) {
+			drawFace(canvas);
+			drawArc(canvas);
+		} else {
+			drawRim(canvas);
+			drawFace(canvas);
+		}
 		drawScale(canvas);
 		drawTexts(canvas);
-		canvas.rotate(scaleToCanvasDegrees(valueToDegrees(needleValue)), canvasCenterX, canvasCenterY);
-		canvas.drawPath(needlePath, needlePaint);
-		canvas.drawCircle(canvasCenterX, canvasCenterY, canvasWidth / 61f, needleScrewPaint);
+		if (drawNeedle) {
+			canvas.rotate(scaleToCanvasDegrees(valueToDegrees(needleValue)), canvasCenterX, canvasCenterY);
+			canvas.drawPath(needlePath, needlePaint);
+			canvas.drawCircle(canvasCenterX, canvasCenterY, canvasWidth / 61f, needleScrewPaint);
+		}
 
 		if (needsToMove()) {
 			moveNeedle();
@@ -347,6 +411,17 @@ public class Gauge extends View {
 		}
 	}
 
+	/** Track from the scale start to its end, filled up to the (animated) value in the needle colour. */
+	private void drawArc(Canvas canvas) {
+		float sweepTotal = endAngle - startAngle;
+		// Canvas arcs start at 3 o'clock; the scale starts startAngle degrees past 6 o'clock.
+		float canvasStart = startAngle + 90f;
+		canvas.drawArc(arcRect, canvasStart, sweepTotal, false, arcTrackPaint);
+		float sweepValue = valueToDegrees(needleValue) - 180f - startAngle;
+		sweepValue = Math.max(MIN_ARC_SWEEP_DEGREES, Math.min(sweepValue, sweepTotal));
+		canvas.drawArc(arcRect, canvasStart, sweepValue, false, arcFillPaint);
+	}
+
 	private void drawRim(Canvas canvas) {
 		canvas.drawOval(rimRect, rimPaint);
 		canvas.drawOval(rimRect, rimCirclePaint);
@@ -355,7 +430,9 @@ public class Gauge extends View {
 	private void drawFace(Canvas canvas) {
 		canvas.drawOval(faceRect, facePaint);
 		canvas.drawOval(faceRect, rimCirclePaint);
-		canvas.drawOval(faceRect, rimShadowPaint);
+		if (!flat) {
+			canvas.drawOval(faceRect, rimShadowPaint);
+		}
 	}
 
 	private void drawScale(Canvas canvas) {
@@ -380,8 +457,10 @@ public class Gauge extends View {
 				canvas.drawLine(canvasCenterX, y1, canvasCenterX, y4, scalePaint);
 			}
 
-			scalePaint.setColor(gaugeNick.getNicColor(i, value));
-			canvas.drawLine(canvasCenterX, y1, canvasCenterX, y2, scalePaint);
+			if (gaugeNick.shouldDrawNick(i, value)) {
+				scalePaint.setColor(gaugeNick.getNicColor(i, value));
+				canvas.drawLine(canvasCenterX, y1, canvasCenterX, y2, scalePaint);
+			}
 
 			canvas.restore();
 			drawLabels(canvas, i);
@@ -402,10 +481,42 @@ public class Gauge extends View {
 	}
 
 	private void drawTexts(Canvas canvas) {
+		if (flat) {
+			drawFlatTexts(canvas);
+			return;
+		}
 		drawTextCentered(upperText, canvasCenterX, canvasCenterY - canvasCenterY / 4, upperTextPaint, canvas);
 		drawTextCentered(upperTextUnit, upperTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - upperTextUnitPaint.getTextSize(), upperTextUnitPaint, canvas);
 		drawTextCentered(lowerText, canvasCenterX, canvasCenterY + canvasCenterY / 4, lowerTextPaint, canvas);
 		drawTextCentered(lowerTextUnit, lowerTextUnitPaint.getTextSize() / 2, true, canvasCenterX, scaleRect.bottom - lowerTextUnitPaint.getTextSize() * 0.4f, lowerTextUnitPaint, canvas);
+	}
+
+	/** Flat style: each unit sits directly under its value instead of at the bottom of the face. */
+	private void drawFlatTexts(Canvas canvas) {
+		// Each unit sits right under its value. With a needle the upper block clears the hub from
+		// above and the lower block from below; without one the upper block takes the centre.
+		float upperY = drawNeedle
+				? canvasCenterY - canvasCenterY * FLAT_UPPER_TEXT_OFFSET
+				: canvasCenterY - upperTextUnitPaint.getTextSize() * 0.6f;
+		if (hasText(upperText)) {
+			drawTextCentered(upperText, canvasCenterX, upperY, upperTextPaint, canvas);
+		}
+		if (hasText(upperTextUnit)) {
+			float unitY = upperY + upperTextPaint.getTextSize() * 0.5f + upperTextUnitPaint.getTextSize() * UNIT_GAP_FACTOR;
+			drawTextCentered(upperTextUnit, canvasCenterX, unitY, upperTextUnitPaint, canvas);
+		}
+		float lowerY = canvasCenterY + canvasCenterY * FLAT_LOWER_TEXT_OFFSET;
+		if (hasText(lowerText)) {
+			drawTextCentered(lowerText, canvasCenterX, lowerY, lowerTextPaint, canvas);
+		}
+		if (hasText(lowerTextUnit)) {
+			float unitY = lowerY + lowerTextPaint.getTextSize() * 0.5f + lowerTextUnitPaint.getTextSize() * UNIT_GAP_FACTOR;
+			drawTextCentered(lowerTextUnit, canvasCenterX, unitY, lowerTextUnitPaint, canvas);
+		}
+	}
+
+	private static boolean hasText(String text) {
+		return text != null && !text.isEmpty();
 	}
 
 	@Override
@@ -422,26 +533,32 @@ public class Gauge extends View {
 
 		needlePaint.setStrokeWidth(canvasWidth / 197f);
 
-		if (needleShadow)
+		if (needleShadow && !flat)
 			needlePaint.setShadowLayer(canvasWidth / 123f, canvasWidth / 10000f, canvasWidth / 10000f, Color.GRAY);
 
 		setNeedle();
 
 		rimRect = new RectF(canvasWidth * .05f, canvasHeight * .05f, canvasWidth * 0.95f, canvasHeight * 0.95f);
-		rimPaint.setShader(new LinearGradient(canvasWidth * 0.40f, canvasHeight * 0.0f, canvasWidth * 0.60f, canvasHeight * 1.0f,
-				Color.rgb(0xf0, 0xf5, 0xf0),
-				Color.rgb(0x30, 0x31, 0x30),
-				Shader.TileMode.CLAMP));
+		if (flat) {
+			rimPaint.setShader(null);
+		} else {
+			rimPaint.setShader(new LinearGradient(canvasWidth * 0.40f, canvasHeight * 0.0f, canvasWidth * 0.60f, canvasHeight * 1.0f,
+					Color.rgb(0xf0, 0xf5, 0xf0),
+					Color.rgb(0x30, 0x31, 0x30),
+					Shader.TileMode.CLAMP));
+		}
 
 		float rimSize = 0.02f * canvasWidth;
 		faceRect = new RectF();
 		faceRect.set(rimRect.left + rimSize, rimRect.top + rimSize,
 				rimRect.right - rimSize, rimRect.bottom - rimSize);
 
-		rimShadowPaint.setShader(new RadialGradient(0.5f * canvasWidth, 0.5f * canvasHeight, faceRect.width() / 2.0f,
-				new int[]{0x00000000, 0x00000500, 0x50000500},
-				new float[]{0.96f, 0.96f, 0.99f},
-				Shader.TileMode.MIRROR));
+		if (!flat) {
+			rimShadowPaint.setShader(new RadialGradient(0.5f * canvasWidth, 0.5f * canvasHeight, faceRect.width() / 2.0f,
+					new int[]{0x00000000, 0x00000500, 0x50000500},
+					new float[]{0.96f, 0.96f, 0.99f},
+					Shader.TileMode.MIRROR));
+		}
 
 		scalePaint.setStrokeWidth(0.005f * canvasWidth);
 		scalePaint.setTextSize(0.045f * canvasWidth);
@@ -454,6 +571,17 @@ public class Gauge extends View {
 
 		labelRadius = (canvasCenterX - scaleRect.left) * 0.70f;
 
+		if (arc) {
+			arcWidth = requestedArcWidth > 0 ? requestedArcWidth : DEFAULT_ARC_WIDTH_FRACTION * canvasWidth;
+			arcTrackPaint.setStrokeWidth(arcWidth);
+			arcFillPaint.setStrokeWidth(arcWidth);
+			float halfArc = arcWidth / 2f;
+			arcRect = new RectF(rimRect.left + halfArc, rimRect.top + halfArc, rimRect.right - halfArc, rimRect.bottom - halfArc);
+			float scaleInset = arcWidth + ARC_SCALE_GAP_FRACTION * canvasWidth;
+			scaleRect.set(rimRect.left + scaleInset, rimRect.top + scaleInset, rimRect.right - scaleInset, rimRect.bottom - scaleInset);
+			labelRadius = (canvasCenterX - scaleRect.left) * ARC_LABEL_RADIUS_FRACTION;
+		}
+
         /*
         Log.d(TAG, "width = " + w);
         Log.d(TAG, "height = " + h);
@@ -463,6 +591,10 @@ public class Gauge extends View {
         Log.d(TAG, "density dpi = " + getResources().getDisplayMetrics().densityDpi);
         Log.d(TAG, "scaled density = " + getResources().getDisplayMetrics().scaledDensity);
         */
+
+		// Text sizes are given for a 1080 px dial and scale with the dial actually drawn, so a small
+		// dial in a landscape column keeps the same proportions as a full-width one in portrait.
+		textScaleFactor = canvasWidth / (float) REF_MAX_PORTRAIT_CANVAS_SIZE;
 
 		float textSize;
 
@@ -494,8 +626,12 @@ public class Gauge extends View {
 		needlePath.addCircle(canvasCenterX, canvasCenterY, canvasWidth / 49f, Path.Direction.CW);
 		needlePath.close();
 
-		needleScrewPaint.setShader(new RadialGradient(canvasCenterX, canvasCenterY, needleWidth / 2,
-				Color.DKGRAY, Color.BLACK, Shader.TileMode.CLAMP));
+		if (flat) {
+			needleScrewPaint.setShader(null);
+		} else {
+			needleScrewPaint.setShader(new RadialGradient(canvasCenterX, canvasCenterY, needleWidth / 2,
+					Color.DKGRAY, Color.BLACK, Shader.TileMode.CLAMP));
+		}
 	}
 
 	@Override
@@ -571,6 +707,21 @@ public class Gauge extends View {
 		//float xPos = x - (paint.measureText(text)/2f);
 		float yPos = (y - ((paint.descent() + paint.ascent()) / 2f));
 
+		if (flat) {
+			int color = paint.getColor();
+			if (textGlow) {
+				paint.setStyle(Paint.Style.STROKE);
+				paint.setStrokeWidth(TEXT_GLOW_STRENGTH);
+				paint.setMaskFilter(new BlurMaskFilter(paint.getTextSize() * TEXT_GLOW_BLUR_RATIO, BlurMaskFilter.Blur.NORMAL));
+				canvas.drawText(text, x, yPos, paint);
+				paint.setMaskFilter(null);
+				paint.setColor(color);
+			}
+			paint.setStyle(Paint.Style.FILL);
+			canvas.drawText(text, x, yPos, paint);
+			return;
+		}
+
 		int color = paint.getColor();
 
 		//draw glow
@@ -644,8 +795,11 @@ public class Gauge extends View {
 	 */
 	public void setUpperTextColor(@ColorInt int color) {
 		upperTextColor = color;
-		initValues();
-		initPaint();
+		if (upperTextPaint != null) {
+			upperTextPaint.setColor(color);
+			upperTextUnitPaint.setColor(color);
+		}
+		invalidate();
 	}
 
 	/**
@@ -675,8 +829,11 @@ public class Gauge extends View {
 	 */
 	public void setLowerTextColor(@ColorInt int color) {
 		lowerTextColor = color;
-		initValues();
-		initPaint();
+		if (lowerTextPaint != null) {
+			lowerTextPaint.setColor(color);
+			lowerTextUnitPaint.setColor(color);
+		}
+		invalidate();
 	}
 
 	/**
@@ -719,6 +876,67 @@ public class Gauge extends View {
 	 */
 	public void setLowerTextSize(float size) {
 		requestedLowerTextSize = size;
+	}
+
+	/**
+	 * Set or override the text size for the unit under the upper text (same scaling as {@link #setUpperTextSize(float)}).
+	 *
+	 * @param size (relative pixels)
+	 */
+	public void setUpperTextUnitSize(float size) {
+		requestedUpperUnitTextSize = size;
+	}
+
+	/**
+	 * Set or override the text size for the unit under the lower text (same scaling as {@link #setLowerTextSize(float)}).
+	 *
+	 * @param size (relative pixels)
+	 */
+	public void setLowerTextUnitSize(float size) {
+		requestedLowerUnitTextSize = size;
+	}
+
+	/**
+	 * Flat style: no gradients, glows, shadows or blur, and units drawn under their values.
+	 * Prefer the {@code flat} XML attribute; calling this after layout re-applies the size-dependent paints.
+	 */
+	public void setFlat(boolean flat) {
+		this.flat = flat;
+		initPaint();
+		invalidate();
+	}
+
+	/** Soft halo behind every text in the flat style. */
+	public void setTextGlow(boolean textGlow) {
+		this.textGlow = textGlow;
+		invalidate();
+	}
+
+	/** Whether the needle and hub are drawn. Without them the upper readout takes the centre. */
+	public void setDrawNeedle(boolean drawNeedle) {
+		this.drawNeedle = drawNeedle;
+		invalidate();
+	}
+
+	/** Colour of the filled part of the arc track. */
+	public void setArcColor(@ColorInt int color) {
+		arcColor = color;
+		if (arcFillPaint != null) {
+			arcFillPaint.setColor(color);
+		}
+		invalidate();
+	}
+
+	/**
+	 * Arc style: a track around the dial, filled up to the value, takes the place of the rim.
+	 * Prefer the {@code arc} XML attribute; calling this after layout re-applies the size-dependent geometry.
+	 */
+	public void setArc(boolean arc) {
+		this.arc = arc;
+		if (canvasWidth > 0 && canvasHeight > 0) {
+			onSizeChanged((int) canvasWidth, (int) canvasHeight, (int) canvasWidth, (int) canvasHeight);
+		}
+		invalidate();
 	}
 
 	/**

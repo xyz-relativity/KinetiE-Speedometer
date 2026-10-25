@@ -1,8 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/screen_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
     tools:context=".PermissionsActivity">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <TextView
+        android:id="@+id/permissionTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/permission_title"
+        android:textColor="@color/text_primary"
+        android:textSize="22sp" />
+
+    <TextView
+        android:id="@+id/permissionBody"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/permission_body"
+        android:textColor="@color/text_secondary"
+        android:textSize="15sp" />
+
+    <Button
+        android:id="@+id/buttonAllow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/accent_speed"
+        android:text="@string/permission_allow"
+        android:textColor="@color/screen_background" />
+
+    <Button
+        android:id="@+id/buttonOpenSettings"
+        style="?attr/borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/permission_open_settings"
+        android:textColor="@color/accent_speed"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>

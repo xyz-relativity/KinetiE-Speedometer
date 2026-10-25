@@ -183,7 +183,9 @@ public class SpeedEstimatorTest {
 	public void reportsModeFromGpsAge() {
 		SpeedEstimator estimator = new SpeedEstimator();
 		assertEquals(SpeedEstimator.Mode.NO_FIX, estimator.getMode(0));
+		assertTrue(Float.isNaN(estimator.getLastGpsSigmaMps()));
 		estimator.onGpsSpeed(10_000_000_000L, 5f, 0.3f);
+		assertEquals(0.3f, estimator.getLastGpsSigmaMps(), 0f);
 		assertEquals(SpeedEstimator.Mode.GPS, estimator.getMode(11_000_000_000L));
 		assertEquals(SpeedEstimator.Mode.DEAD_RECKONING, estimator.getMode(20_000_000_000L));
 	}

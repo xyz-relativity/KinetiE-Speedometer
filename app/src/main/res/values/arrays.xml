@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="speed_unit_entries">
+        <item>@string/unit_kph</item>
+        <item>@string/unit_mph</item>
+        <item>@string/unit_mps</item>
+    </string-array>
+    <string-array name="speed_unit_values">
+        <item>kph</item>
+        <item>mph</item>
+        <item>mps</item>
+    </string-array>
+    <string-array name="theme_entries">
+        <item>@string/theme_night</item>
+        <item>@string/theme_day</item>
+        <item>@string/theme_system</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>night</item>
+        <item>day</item>
+        <item>system</item>
+    </string-array>
+</resources>

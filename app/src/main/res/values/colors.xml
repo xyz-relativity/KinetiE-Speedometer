@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+    <!-- Day palette for sunlight: light surfaces, darker accent stops. The night palette lives in values-night. -->
+    <color name="colorPrimary">#F5F4EF</color>
+    <color name="colorPrimaryDark">#E8E6DF</color>
+    <color name="colorAccent">#0F6E56</color>
+
+    <color name="screen_background">#F5F4EF</color>
+    <color name="surface_tile">#E8E6DF</color>
+    <color name="gauge_face">#FFFFFF</color>
+    <color name="gauge_rim">#D3D1C7</color>
+    <color name="gauge_tick">#888780</color>
+    <color name="text_primary">#1C1C1A</color>
+    <color name="text_secondary">#5F5E5A</color>
+    <color name="text_muted">#888780</color>
+    <color name="accent_speed">#0F6E56</color>
+    <color name="accent_energy">#BA7517</color>
+
+    <!-- Status chips. -->
+    <color name="chip_stroke">#B4B2A9</color>
+    <color name="status_good">#1D9E75</color>
+    <color name="status_fair">#BA7517</color>
+    <color name="status_bad">#A32D2D</color>
+    <color name="chip_recording">#993C1D</color>
 </resources>

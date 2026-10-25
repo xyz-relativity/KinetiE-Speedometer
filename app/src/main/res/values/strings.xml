@@ -15,4 +15,7 @@
     <string name="recording_started">Recording to %1$s</string>
     <string name="recording_stopped">Recording saved to %1$s</string>
     <string name="recording_failed">Recording failed: %1$s</string>
+    <string name="history_10_min">10 min</string>
+    <string name="history_5_min">5 min</string>
+    <string name="history_1_min">1 min</string>
 </resources>

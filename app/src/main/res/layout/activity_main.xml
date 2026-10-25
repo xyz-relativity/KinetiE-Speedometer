@@ -84,12 +84,43 @@
                 />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <com.github.mikephil.charting.charts.LineChart
-            android:id="@+id/historyChart"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.4"
-            android:background="#00ffffff" />
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/historyWindowRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="end|center_vertical"
+                android:orientation="horizontal"
+                android:paddingEnd="8dp">
+
+                <Button
+                    android:id="@+id/historyWindow10"
+                    style="@style/HistoryWindowButton"
+                    android:text="@string/history_10_min" />
+
+                <Button
+                    android:id="@+id/historyWindow5"
+                    style="@style/HistoryWindowButton"
+                    android:text="@string/history_5_min" />
+
+                <Button
+                    android:id="@+id/historyWindow1"
+                    style="@style/HistoryWindowButton"
+                    android:text="@string/history_1_min" />
+            </LinearLayout>
+
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/historyChart"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="#00ffffff" />
+        </LinearLayout>
 
     </LinearLayout>
 

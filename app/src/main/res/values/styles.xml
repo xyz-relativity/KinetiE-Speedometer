@@ -13,6 +13,22 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <!-- Small borderless buttons above the chart that pick how much history it shows. -->
+    <style name="HistoryWindowButton" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <!-- Explicit padding replaces the borderless background's 6dp insets, which clipped the text at a fixed height. -->
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">#AAAAAA</item>
+    </style>
+
     <style name="energyTextView">
         <item name="android:textColor">#FFFF0000</item>
         <item name="android:textStyle">bold</item>

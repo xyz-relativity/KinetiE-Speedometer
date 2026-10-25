@@ -24,6 +24,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -74,11 +75,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private static final String SAVED_GRAPH_VALUES = "GRAPH_VALUES";
 	private static final String SAVED_START_TIME = "START_TIME";
 	private static final String SAVED_ODOMETER = "ODOMETER";
+	private static final String SAVED_CHART_WINDOW = "CHART_WINDOW";
 
 	private static final String PREFS_NAME = "configs";
 	/** Odometer in metres stored as the raw bits of a double; the float key before it lost metres past 10,000 km. */
 	private static final String PREF_ODOMETER_METERS_BITS = "odometer_meters_bits";
 	private static final String PREF_ODOMETER_LEGACY_FLOAT = "odometer";
+	private static final String PREF_CHART_WINDOW_INDEX = "chart_window_index";
 
 	private static final String ODOMETER_FORMAT = "%011.2f km";
 	private static final float MASS_KG = 1;
@@ -119,15 +122,21 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private final float[] linearAcceleration = new float[3];
 	private boolean hasGravity = false;
 	private SensorRecorder recorder;
+	private int chartWindowIndex = DEFAULT_CHART_WINDOW_INDEX;
+	private long lastChartSampleMs = Long.MIN_VALUE;
+	private final Button[] historyWindowButtons = new Button[CHART_WINDOWS_SECONDS.length];
 
 	// --- UI Decoupling Handler and Interval ---
 	private static final int UI_UPDATE_INTERVAL_MS = 100; // 10Hz rendering rate
 
 	// --- Tuning Constants ---
 	private static final LineDataSet.Mode GRAPH_DATA_SET_DISPLAY_MODE = LineDataSet.Mode.LINEAR;
-	private static final int GRAPH_DATA_WINDOW_SECONDS = 4 * 60; // 4-minute rolling window
-	private static final int GRAPH_MAX_SAMPLES_PER_SECOND = 1000 / UI_UPDATE_INTERVAL_MS; // samples per second (10)
-	private static final int GRAPH_MAX_SAMPLES = GRAPH_DATA_WINDOW_SECONDS * GRAPH_MAX_SAMPLES_PER_SECOND;
+	/** History the chart can show, in seconds, in the order of the selector buttons. */
+	private static final int[] CHART_WINDOWS_SECONDS = {10 * 60, 5 * 60, 60};
+	private static final int DEFAULT_CHART_WINDOW_INDEX = 1;
+	/** The chart gets a point every 250 ms; at 10 Hz the ten-minute buffer would be too heavy to redraw. */
+	private static final int CHART_SAMPLE_INTERVAL_MS = 250;
+	private static final int GRAPH_MAX_SAMPLES = CHART_WINDOWS_SECONDS[0] * 1000 / CHART_SAMPLE_INTERVAL_MS;
 	/** The acceleration axis never zooms in tighter than this, in g, so noise around zero does not fill the chart. */
 	private static final float ACCELERATION_AXIS_MIN_RANGE_G = 0.5f;
 
@@ -176,6 +185,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		super.onSaveInstanceState(savedInstanceState);
 		savedInstanceState.putLong(SAVED_START_TIME, startTime);
 		savedInstanceState.putDouble(SAVED_ODOMETER, odometerMeters);
+		savedInstanceState.putInt(SAVED_CHART_WINDOW, chartWindowIndex);
 
 		LineData lineData = chart.getData();
 		if (lineData == null || lineData.getDataSetCount() < LineGraphs.values().length) {
@@ -204,6 +214,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		super.onRestoreInstanceState(savedInstanceState);
 		startTime = savedInstanceState.getLong(SAVED_START_TIME);
 		odometerMeters = savedInstanceState.getDouble(SAVED_ODOMETER);
+		chartWindowIndex = savedInstanceState.getInt(SAVED_CHART_WINDOW, DEFAULT_CHART_WINDOW_INDEX);
 
 		long[] timestamps = savedInstanceState.getLongArray(SAVED_GRAPH_TIMESTAMPS);
 		float[] speedValues = savedInstanceState.getFloatArray(SAVED_GRAPH_VALUES + "_" + LineGraphs.SPEED.name());
@@ -218,6 +229,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		for (int index = 0; index < entryCount; index++) {
 			updateUi(timestamps[index], speedValues[index], energyValues[index], accelerationValues[index]);
 		}
+		selectChartWindow(chartWindowIndex);
 	}
 
 	@Override
@@ -228,6 +240,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		} else if (settings.contains(PREF_ODOMETER_LEGACY_FLOAT)) {
 			odometerMeters = settings.getFloat(PREF_ODOMETER_LEGACY_FLOAT, 0f);
 		}
+		selectChartWindow(settings.getInt(PREF_CHART_WINDOW_INDEX, DEFAULT_CHART_WINDOW_INDEX));
 	}
 
 	@Override
@@ -313,8 +326,6 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		chart.setTouchEnabled(true);
 		chart.setDragEnabled(true);
 		chart.setScaleEnabled(true);
-		chart.setVisibleXRangeMaximum(50);
-		chart.setVisibleXRangeMinimum(50);
 
 		Legend legend = chart.getLegend();
 		legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
@@ -326,6 +337,48 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		chart.setData(buildLineData());
 		chart.setMaxVisibleValueCount(GRAPH_MAX_SAMPLES);
 		chart.invalidate();
+
+		int[] buttonIds = {R.id.historyWindow10, R.id.historyWindow5, R.id.historyWindow1};
+		for (int index = 0; index < buttonIds.length; index++) {
+			final int windowIndex = index;
+			historyWindowButtons[index] = findViewById(buttonIds[index]);
+			historyWindowButtons[index].setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					selectChartWindow(windowIndex);
+					settings.edit().putInt(PREF_CHART_WINDOW_INDEX, windowIndex).apply();
+				}
+			});
+		}
+	}
+
+	/** Highlights the chosen button and pins the chart to that much history. */
+	private void selectChartWindow(int index) {
+		chartWindowIndex = Math.max(0, Math.min(CHART_WINDOWS_SECONDS.length - 1, index));
+		int inactive = getThemeColor(this, android.R.attr.textColor);
+		for (int i = 0; i < historyWindowButtons.length; i++) {
+			if (historyWindowButtons[i] != null) {
+				historyWindowButtons[i].setTextColor(i == chartWindowIndex ? Color.WHITE : inactive);
+			}
+		}
+		LineData data = chart.getData();
+		if (data != null) {
+			applyChartWindow(data);
+			chart.notifyDataSetChanged();
+			chart.invalidate();
+		}
+	}
+
+	/** Pins the x axis to the selected window ending at the newest sample; older samples stay buffered. */
+	private void applyChartWindow(LineData data) {
+		if (data.getEntryCount() == 0) {
+			return;
+		}
+		float windowMs = CHART_WINDOWS_SECONDS[chartWindowIndex] * 1000f;
+		float xMax = data.getXMax();
+		XAxis xAxis = chart.getXAxis();
+		xAxis.setAxisMinimum(xMax - windowMs);
+		xAxis.setAxisMaximum(xMax);
 	}
 
 	private void initGauge() {
@@ -522,31 +575,40 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		final LineData data = chart.getData();
 		if (data == null) return;
 
-		data.addEntry(new Entry(time, speedKph), LineGraphs.SPEED.ordinal());
-		data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
+		boolean sampled = lastChartSampleMs == Long.MIN_VALUE || time - lastChartSampleMs >= CHART_SAMPLE_INTERVAL_MS;
+		if (sampled) {
+			data.addEntry(new Entry(time, speedKph), LineGraphs.SPEED.ordinal());
+			data.addEntry(new Entry(time, energy), LineGraphs.ENERGY.ordinal());
 
-		if (acceleration != null) {
-			data.addEntry(new Entry(time, acceleration), LineGraphs.ACCELERATION.ordinal());
-		}
-
-		for (ILineDataSet i : data.getDataSets()) {
-			if (i.getEntryCount() >= GRAPH_MAX_SAMPLES) {
-				i.removeFirst();
+			if (acceleration != null) {
+				data.addEntry(new Entry(time, acceleration), LineGraphs.ACCELERATION.ordinal());
 			}
-		}
 
-		data.notifyDataChanged();
-		clampAccelerationAxis(data);
+			for (ILineDataSet i : data.getDataSets()) {
+				while (i.getEntryCount() > GRAPH_MAX_SAMPLES) {
+					i.removeFirst();
+				}
+			}
+			lastChartSampleMs = time;
+
+			data.notifyDataChanged();
+			clampAccelerationAxis(data);
+			applyChartWindow(data);
+		}
 
 		if (isRunning) {
 			odometerView.setText(String.format(Locale.getDefault(), ODOMETER_FORMAT, odometerMeters / 1000.0));
-			chart.notifyDataSetChanged();
+			if (sampled) {
+				chart.notifyDataSetChanged();
+			}
 
 			gaugeView.moveToValue(energy);
 			gaugeView.setLowerText(String.format(Locale.getDefault(), "%.1f", energy));
 			gaugeView.setUpperText(String.format(Locale.getDefault(), "%.1f", speedKph));
 
-			chart.invalidate();
+			if (sampled) {
+				chart.invalidate();
+			}
 		}
 	}
 

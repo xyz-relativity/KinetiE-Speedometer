@@ -86,13 +86,36 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <!-- History selector between dial and chart, stacked so it stays clear of the status text. -->
+        <LinearLayout
+            android:id="@+id/historyWindowRow"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="bottom"
+            android:orientation="vertical"
+            android:paddingBottom="8dp">
+
+            <Button
+                android:id="@+id/historyWindow10"
+                style="@style/HistoryWindowButton"
+                android:text="@string/history_10_min" />
+
+            <Button
+                android:id="@+id/historyWindow5"
+                style="@style/HistoryWindowButton"
+                android:text="@string/history_5_min" />
+
+            <Button
+                android:id="@+id/historyWindow1"
+                style="@style/HistoryWindowButton"
+                android:text="@string/history_1_min" />
+        </LinearLayout>
+
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/historyChart"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="0.4"
-            android:background="#00ffffff"
-
-            />
+            android:background="#00ffffff" />
     </LinearLayout>
 </RelativeLayout>

@@ -220,6 +220,17 @@ public final class SpeedKalmanFilter {
 	}
 
 	/**
+	 * Moves the bias estimate without touching its uncertainty. Used when the acceleration input's
+	 * own reference (the gravity estimate) is corrected: shifting the bias by the same amount keeps
+	 * the fused speed continuous and leaves it to GPS to settle the two against each other.
+	 */
+	public void shiftBias(float delta) {
+		if (biasEnabled) {
+			bias += delta;
+		}
+	}
+
+	/**
 	 * Enables or disables bias estimation. Disabled, the bias is held at zero, which is the right
 	 * thing while the forward axis is unknown and the acceleration input is only a guess. Either
 	 * way the bias estimate is reset.

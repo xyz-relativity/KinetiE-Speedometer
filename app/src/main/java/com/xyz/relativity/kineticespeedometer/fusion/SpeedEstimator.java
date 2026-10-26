@@ -25,12 +25,12 @@ public final class SpeedEstimator {
 		 * sensor absorbs sustained acceleration into its gravity estimate, so it loses most of what a
 		 * car does; a slow estimate of our own over the raw accelerometer keeps it.
 		 */
-		public float gravityTimeConstantSec = 80f;
+		public float gravityTimeConstantSec = 15f;
 		/**
 		 * Updates of the gravity estimate pause while the horizontal acceleration, smoothed over about a
 		 * second, exceeds this: ordinary driving accelerations must never be absorbed as gravity.
 		 */
-		public float gravityUpdateMaxAccelMps2 = 0.5f;
+		public float gravityUpdateMaxAccelMps2 = 0.8f;
 		/** Smoothing applied to the horizontal acceleration before the gate above, in seconds. */
 		public float gravityGateSmoothingSec = 1f;
 		/** While the car stands still the true acceleration is zero, so gravity can be learned this fast. */
@@ -75,6 +75,7 @@ public final class SpeedEstimator {
 	private final float[] slowGravity = new float[3];
 	private boolean hasSlowGravity;
 	private final float[] gyroDelta = new float[3];
+	private final float[] gravityDelta = new float[3];
 	private long lastGyroNs;
 	private boolean hasGyro;
 	private final float[] gravityUnit = new float[3];
@@ -120,11 +121,20 @@ public final class SpeedEstimator {
 		if (hasGyro && hasSlowGravity) {
 			float dt = (tNs - lastGyroNs) / NANOS_PER_SECOND;
 			if (dt > 0f && dt <= MAX_SAMPLE_DT_SEC) {
-				// A world-fixed vector seen from a rotating frame: dg/dt = -rate x g.
+				// A world-fixed vector seen from a rotating frame: dg/dt = -rate x g. The first-order step
+				// stretches the vector slightly; restore its length so fast turns do not inflate it.
+				float length = Vec3.norm(slowGravity);
 				Vec3.cross(rateRads, slowGravity, gyroDelta);
 				slowGravity[0] -= gyroDelta[0] * dt;
 				slowGravity[1] -= gyroDelta[1] * dt;
 				slowGravity[2] -= gyroDelta[2] * dt;
+				float stretched = Vec3.norm(slowGravity);
+				if (stretched > 0f) {
+					float scale = length / stretched;
+					slowGravity[0] *= scale;
+					slowGravity[1] *= scale;
+					slowGravity[2] *= scale;
+				}
 			}
 		}
 		lastGyroNs = tNs;
@@ -197,9 +207,17 @@ public final class SpeedEstimator {
 				k = Math.min(1f, dt / tuning.gravityTimeConstantSec);
 			}
 			if (k > 0f) {
-				slowGravity[0] += k * (rawAccel[0] - slowGravity[0]);
-				slowGravity[1] += k * (rawAccel[1] - slowGravity[1]);
-				slowGravity[2] += k * (rawAccel[2] - slowGravity[2]);
+				gravityDelta[0] = k * (rawAccel[0] - slowGravity[0]);
+				gravityDelta[1] = k * (rawAccel[1] - slowGravity[1]);
+				gravityDelta[2] = k * (rawAccel[2] - slowGravity[2]);
+				slowGravity[0] += gravityDelta[0];
+				slowGravity[1] += gravityDelta[1];
+				slowGravity[2] += gravityDelta[2];
+				// The measured forward acceleration drops by the correction's forward component; move the
+				// Kalman bias with it so the fused speed does not jump and GPS keeps the last word.
+				if (axisTrusted) {
+					filter.shiftBias(-axis.project(gravityDelta));
+				}
 			}
 		}
 

@@ -18,6 +18,13 @@ final class Vec3 {
 		dst[2] = src[2];
 	}
 
+	/** dst = a x b; dst must not alias a or b. */
+	static void cross(float[] a, float[] b, float[] dst) {
+		dst[0] = a[1] * b[2] - a[2] * b[1];
+		dst[1] = a[2] * b[0] - a[0] * b[2];
+		dst[2] = a[0] * b[1] - a[1] * b[0];
+	}
+
 	static void zero(float[] a) {
 		a[0] = 0f;
 		a[1] = 0f;

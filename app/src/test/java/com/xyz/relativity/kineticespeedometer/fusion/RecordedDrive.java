@@ -50,6 +50,7 @@ public final class RecordedDrive {
 		BufferedReader lines = new BufferedReader(reader);
 		float[] gravity = new float[3];
 		float[] linear = new float[3];
+		float[] gyro = new float[3];
 		boolean hasGravity = false;
 		List<Point> points = new ArrayList<>();
 		String line;
@@ -79,6 +80,10 @@ public final class RecordedDrive {
 							points.add(new Point(timestampNs, estimator.getSpeedMps(),
 									estimator.isStationary(), estimator.isForwardAxisKnown()));
 						}
+						break;
+					case "gyro":
+						parseVector(fields, gyro);
+						estimator.onGyroSample(timestampNs, gyro);
 						break;
 					case "gps":
 						float speed = Float.parseFloat(fields[2]);

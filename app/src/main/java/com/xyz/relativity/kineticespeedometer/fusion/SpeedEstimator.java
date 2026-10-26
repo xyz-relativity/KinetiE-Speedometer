@@ -18,19 +18,42 @@ package com.xyz.relativity.kineticespeedometer.fusion;
 public final class SpeedEstimator {
 	public enum Mode { NO_FIX, GPS, DEAD_RECKONING }
 
+	/** Knobs worth tuning against recorded drives; the defaults come from such recordings. */
+	public static final class Tuning {
+		/**
+		 * Time constant of the estimator's own gravity estimate. The platform's linear-acceleration
+		 * sensor absorbs sustained acceleration into its gravity estimate, so it loses most of what a
+		 * car does; a slow estimate of our own over the raw accelerometer keeps it.
+		 */
+		public float gravityTimeConstantSec = 80f;
+		/**
+		 * Updates of the gravity estimate pause while the horizontal acceleration, smoothed over about a
+		 * second, exceeds this: ordinary driving accelerations must never be absorbed as gravity.
+		 */
+		public float gravityUpdateMaxAccelMps2 = 0.5f;
+		/** Smoothing applied to the horizontal acceleration before the gate above, in seconds. */
+		public float gravityGateSmoothingSec = 1f;
+		/** While the car stands still the true acceleration is zero, so gravity can be learned this fast. */
+		public float gravityStationaryTimeConstantSec = 5f;
+		/** Extra age assumed for every fix beyond its own timestamp. */
+		public float gpsExtraLatencySec = 0.2f;
+		/** Acceleration spread under which a car with a near-zero GPS speed counts as standing still. */
+		public float stationaryStdWithGpsMps2 = 0.22f;
+		/** Direction agreement required before the forward axis is trusted. */
+		public float axisMinCoherence = ForwardAxisEstimator.DEFAULT_MIN_COHERENCE;
+		/** Kalman velocity random-walk density with inertial input (m^2/s^3). Tuned on recorded drives. */
+		public float velocityNoiseSensor = 0.2f;
+		/** Kalman bias random-walk density ((m/s^2)^2/s). Tuned on recorded drives. */
+		public float biasNoise = 2e-3f;
+	}
+
 	public static final float DEFAULT_GPS_SPEED_SIGMA_MPS = 0.5f;
 	public static final float MIN_GPS_SPEED_SIGMA_MPS = 0.15f;
 	public static final float MAX_GPS_SPEED_SIGMA_MPS = 5f;
 	/** Without a fix for this long the estimate runs on dead reckoning alone. */
 	public static final long GPS_STALE_NS = 3_000_000_000L;
-	/**
-	 * Extra age assumed for every fix beyond its own timestamp. Devices that stamp fixes with the
-	 * delivery time rather than the measurement time benefit from 300 to 800 ms here.
-	 */
-	public static final long GPS_EXTRA_LATENCY_NS = 0L;
 
 	static final float STATIONARY_GPS_SPEED_MPS = 0.8f;
-	static final float STATIONARY_STD_WITH_GPS_MPS2 = 0.15f;
 	static final float STATIONARY_STD_WITHOUT_GPS_MPS2 = 0.07f;
 	static final float STATIONARY_MEAN_MAX_MPS2 = 0.3f;
 	static final float MAX_SAMPLE_DT_SEC = 0.5f;
@@ -42,12 +65,22 @@ public final class SpeedEstimator {
 	private static final float ACCEL_DISPLAY_SMOOTHING = 0.1f;
 	private static final float NANOS_PER_SECOND = 1e9f;
 
-	private final SpeedKalmanFilter filter = new SpeedKalmanFilter();
-	private final ForwardAxisEstimator axis = new ForwardAxisEstimator();
+	private final Tuning tuning;
+	private final long gpsExtraLatencyNs;
+	private final SpeedKalmanFilter filter;
+	private final ForwardAxisEstimator axis;
 	private final StationaryDetector stationaryDetector = new StationaryDetector();
 
+	private final float[] rawAccel = new float[3];
+	private final float[] slowGravity = new float[3];
+	private boolean hasSlowGravity;
+	private final float[] gyroDelta = new float[3];
+	private long lastGyroNs;
+	private boolean hasGyro;
 	private final float[] gravityUnit = new float[3];
+	private final float[] accel = new float[3];
 	private final float[] horizontal = new float[3];
+	private final float[] horizontalSmooth = new float[3];
 
 	private long lastSampleNs;
 	private boolean hasSample;
@@ -64,26 +97,56 @@ public final class SpeedEstimator {
 	private double distanceMeters;
 
 	public SpeedEstimator() {
+		this(new Tuning());
+	}
+
+	public SpeedEstimator(Tuning tuning) {
+		this.tuning = tuning;
+		this.gpsExtraLatencyNs = (long) (tuning.gpsExtraLatencySec * NANOS_PER_SECOND);
+		this.filter = new SpeedKalmanFilter(tuning.velocityNoiseSensor, tuning.biasNoise);
+		this.axis = new ForwardAxisEstimator(tuning.axisMinCoherence);
 		filter.setBiasEnabled(false);
 	}
 
 	/**
+	 * Rotates the gravity estimate with the measured rotation, so it follows road pitch and mount
+	 * shifts within a sample instead of over the slow accelerometer average. Optional: without gyro
+	 * samples the estimate relies on the slow average alone and hills leak into the speed.
+	 *
+	 * @param tNs      sample timestamp (elapsed realtime nanoseconds)
+	 * @param rateRads device-frame angular rate (rad/s), right-handed, as the gyroscope reports it
+	 */
+	public void onGyroSample(long tNs, float[] rateRads) {
+		if (hasGyro && hasSlowGravity) {
+			float dt = (tNs - lastGyroNs) / NANOS_PER_SECOND;
+			if (dt > 0f && dt <= MAX_SAMPLE_DT_SEC) {
+				// A world-fixed vector seen from a rotating frame: dg/dt = -rate x g.
+				Vec3.cross(rateRads, slowGravity, gyroDelta);
+				slowGravity[0] -= gyroDelta[0] * dt;
+				slowGravity[1] -= gyroDelta[1] * dt;
+				slowGravity[2] -= gyroDelta[2] * dt;
+			}
+		}
+		lastGyroNs = tNs;
+		hasGyro = true;
+	}
+
+	/**
+	 * The two vectors are the platform's split of the raw accelerometer; they are added back
+	 * together here because the platform's gravity estimate swallows sustained acceleration. The
+	 * fused gravity only seeds the estimator's own, slower gravity estimate.
+	 *
 	 * @param tNs         sample timestamp (elapsed realtime nanoseconds)
-	 * @param linearAccel device-frame linear acceleration (m/s^2), gravity already removed
-	 * @param gravity     device-frame gravity vector (m/s^2)
+	 * @param linearAccel device-frame linear acceleration as the platform reports it (m/s^2)
+	 * @param gravity     device-frame gravity as the platform reports it (m/s^2)
 	 */
 	public void onSensorSample(long tNs, float[] linearAccel, float[] gravity) {
-		float g = Vec3.norm(gravity);
-		if (g < MIN_GRAVITY_MPS2) {
+		if (Vec3.norm(gravity) < MIN_GRAVITY_MPS2) {
 			return;
 		}
-		gravityUnit[0] = gravity[0] / g;
-		gravityUnit[1] = gravity[1] / g;
-		gravityUnit[2] = gravity[2] / g;
-		float along = Vec3.dot(linearAccel, gravityUnit);
-		horizontal[0] = linearAccel[0] - along * gravityUnit[0];
-		horizontal[1] = linearAccel[1] - along * gravityUnit[1];
-		horizontal[2] = linearAccel[2] - along * gravityUnit[2];
+		rawAccel[0] = linearAccel[0] + gravity[0];
+		rawAccel[1] = linearAccel[1] + gravity[1];
+		rawAccel[2] = linearAccel[2] + gravity[2];
 
 		float dt = 0f;
 		if (hasSample) {
@@ -100,10 +163,48 @@ public final class SpeedEstimator {
 		lastSampleNs = tNs;
 		hasSample = true;
 
-		axis.addSample(horizontal, dt, gravityUnit);
-		syncAxisTrust();
+		if (!hasSlowGravity || Vec3.norm(slowGravity) < MIN_GRAVITY_MPS2) {
+			Vec3.copy(gravity, slowGravity);
+			hasSlowGravity = true;
+		}
+		float g = Vec3.norm(slowGravity);
+		gravityUnit[0] = slowGravity[0] / g;
+		gravityUnit[1] = slowGravity[1] / g;
+		gravityUnit[2] = slowGravity[2] / g;
+		accel[0] = rawAccel[0] - slowGravity[0];
+		accel[1] = rawAccel[1] - slowGravity[1];
+		accel[2] = rawAccel[2] - slowGravity[2];
+		float along = Vec3.dot(accel, gravityUnit);
+		horizontal[0] = accel[0] - along * gravityUnit[0];
+		horizontal[1] = accel[1] - along * gravityUnit[1];
+		horizontal[2] = accel[2] - along * gravityUnit[2];
+
 		stationaryDetector.add(tNs, Vec3.norm(linearAccel));
 		stationary = evaluateStationary(tNs);
+
+		// Gravity is learned fast at standstill, where the true acceleration is zero, and slowly while
+		// cruising, gated on a smoothed acceleration so driving accelerations are never absorbed. The
+		// gyro, when present, carries the direction through pitch changes in between.
+		if (dt > 0f) {
+			float ks = Math.min(1f, dt / tuning.gravityGateSmoothingSec);
+			horizontalSmooth[0] += ks * (horizontal[0] - horizontalSmooth[0]);
+			horizontalSmooth[1] += ks * (horizontal[1] - horizontalSmooth[1]);
+			horizontalSmooth[2] += ks * (horizontal[2] - horizontalSmooth[2]);
+			float k = 0f;
+			if (stationary) {
+				k = Math.min(1f, dt / tuning.gravityStationaryTimeConstantSec);
+			} else if (Vec3.norm(horizontalSmooth) < tuning.gravityUpdateMaxAccelMps2) {
+				k = Math.min(1f, dt / tuning.gravityTimeConstantSec);
+			}
+			if (k > 0f) {
+				slowGravity[0] += k * (rawAccel[0] - slowGravity[0]);
+				slowGravity[1] += k * (rawAccel[1] - slowGravity[1]);
+				slowGravity[2] += k * (rawAccel[2] - slowGravity[2]);
+			}
+		}
+
+		axis.addSample(horizontal, dt, gravityUnit);
+		syncAxisTrust();
 
 		float accel = axisTrusted ? axis.project(horizontal) : fallbackAccel(tNs);
 		filter.predict(tNs, accel, dt, axisTrusted);
@@ -132,7 +233,7 @@ public final class SpeedEstimator {
 		float sigma = (Float.isNaN(sigmaMps) || sigmaMps <= 0f)
 				? DEFAULT_GPS_SPEED_SIGMA_MPS
 				: Math.max(MIN_GPS_SPEED_SIGMA_MPS, Math.min(MAX_GPS_SPEED_SIGMA_MPS, sigmaMps));
-		long tMeas = tNs - GPS_EXTRA_LATENCY_NS;
+		long tMeas = tNs - gpsExtraLatencyNs;
 
 		updateGpsAccel(tMeas, speedMps);
 		if (!hasSample && hasGps) {
@@ -158,6 +259,21 @@ public final class SpeedEstimator {
 
 	public float getSpeedMps() {
 		return filter.getSpeed();
+	}
+
+	/** Copies the learned forward axis (device frame) into dst; false while it is not trusted. */
+	public boolean copyForwardAxis(float[] dst) {
+		if (!axisTrusted) {
+			return false;
+		}
+		axis.getForward(dst);
+		return true;
+	}
+
+	/** Starts from a forward axis learned on an earlier run, so the inertial path works from the first fix. */
+	public void restoreForwardAxis(float[] forwardUnit) {
+		axis.restore(forwardUnit);
+		syncAxisTrust();
 	}
 
 	/** Bias-corrected forward acceleration, lightly smoothed for display (m/s^2). */
@@ -245,7 +361,7 @@ public final class SpeedEstimator {
 		}
 		boolean gpsRecent = hasGps && tNs - lastGpsNs <= GPS_STALE_NS;
 		if (gpsRecent) {
-			return lastGpsSpeed < STATIONARY_GPS_SPEED_MPS && std < STATIONARY_STD_WITH_GPS_MPS2;
+			return lastGpsSpeed < STATIONARY_GPS_SPEED_MPS && std < tuning.stationaryStdWithGpsMps2;
 		}
 		return std < STATIONARY_STD_WITHOUT_GPS_MPS2;
 	}

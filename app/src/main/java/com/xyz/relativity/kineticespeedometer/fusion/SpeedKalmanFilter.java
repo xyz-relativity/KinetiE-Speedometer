@@ -15,11 +15,11 @@ package com.xyz.relativity.kineticespeedometer.fusion;
  */
 public final class SpeedKalmanFilter {
 	/** Velocity random-walk density (m^2/s^3) while the acceleration input comes from the inertial sensor. */
-	static final float VELOCITY_NOISE_SENSOR = 0.04f;
+	public static final float DEFAULT_VELOCITY_NOISE_SENSOR = 0.04f;
 	/** Velocity random-walk density (m^2/s^3) while the acceleration input is only a GPS-derived guess. */
 	static final float VELOCITY_NOISE_FALLBACK = 0.3f;
 	/** Bias random-walk density ((m/s^2)^2 / s). */
-	static final float BIAS_NOISE = 2.5e-4f;
+	public static final float DEFAULT_BIAS_NOISE = 2.5e-4f;
 	static final float INITIAL_BIAS_VARIANCE = 0.3f * 0.3f;
 	static final float ZERO_VELOCITY_VARIANCE = 0.05f * 0.05f;
 	static final float BIAS_OBSERVATION_VARIANCE = 0.5f * 0.5f;
@@ -31,6 +31,8 @@ public final class SpeedKalmanFilter {
 	private static final int HISTORY_CAPACITY = 1024;
 	private static final float NANOS_PER_SECOND = 1e9f;
 
+	private final float velocityNoiseSensor;
+	private final float biasNoise;
 	private float speed;
 	private float bias;
 	private float p00;
@@ -48,6 +50,16 @@ public final class SpeedKalmanFilter {
 	private int historySize;
 
 	public SpeedKalmanFilter() {
+		this(DEFAULT_VELOCITY_NOISE_SENSOR, DEFAULT_BIAS_NOISE);
+	}
+
+	/**
+	 * @param velocityNoiseSensor velocity random-walk density with inertial input (m^2/s^3); larger trusts GPS more
+	 * @param biasNoise           bias random-walk density ((m/s^2)^2/s); larger lets the bias follow road pitch faster
+	 */
+	public SpeedKalmanFilter(float velocityNoiseSensor, float biasNoise) {
+		this.velocityNoiseSensor = velocityNoiseSensor;
+		this.biasNoise = biasNoise;
 		setBiasEnabled(true);
 	}
 
@@ -65,12 +77,12 @@ public final class SpeedKalmanFilter {
 			if (speed < 0f) {
 				speed = 0f;
 			}
-			float q = sensorAccel ? VELOCITY_NOISE_SENSOR : VELOCITY_NOISE_FALLBACK;
+			float q = sensorAccel ? velocityNoiseSensor : VELOCITY_NOISE_FALLBACK;
 			// P = F P F^T + Q with F = [[1, -dt], [0, 1]]; order matters, each line uses the old values.
 			p00 = p00 - 2f * dtSec * p01 + dtSec * dtSec * p11 + q * dtSec;
 			p01 = p01 - dtSec * p11;
 			if (biasEnabled) {
-				p11 += BIAS_NOISE * dtSec;
+				p11 += biasNoise * dtSec;
 			}
 		}
 		lastPredictNs = tNs;
@@ -83,10 +95,10 @@ public final class SpeedKalmanFilter {
 		if (gapSec <= 0f) {
 			return;
 		}
-		float q = sensorAccel ? VELOCITY_NOISE_SENSOR : VELOCITY_NOISE_FALLBACK;
+		float q = sensorAccel ? velocityNoiseSensor : VELOCITY_NOISE_FALLBACK;
 		p00 += q * gapSec + gapSec * gapSec * p11;
 		if (biasEnabled) {
-			p11 += BIAS_NOISE * gapSec;
+			p11 += biasNoise * gapSec;
 		}
 	}
 

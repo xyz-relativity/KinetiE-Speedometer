@@ -22,13 +22,14 @@ public final class ForwardAxisEstimator {
 	/** Sum of squared speed changes required before the axis is trusted. */
 	static final float MIN_WEIGHT = 16f;
 	/** Resultant length of the weighted sum; 1 means every window agreed on the direction. */
-	static final float MIN_COHERENCE = 0.6f;
-	static final float FORGETTING = 0.97f;
+	static final float DEFAULT_MIN_COHERENCE = 0.5f;
+	static final float FORGETTING = 0.99f;
 	static final float REMOUNT_ANGLE_DEG = 25f;
 	private static final float REMOUNT_COS = (float) Math.cos(Math.toRadians(REMOUNT_ANGLE_DEG));
 	private static final float GRAVITY_SMOOTHING = 0.02f;
 	private static final float NANOS_PER_SECOND = 1e9f;
 
+	private final float minCoherence;
 	private final float[] integral = new float[3];
 	private final float[] accumulator = new float[3];
 	private float weight;
@@ -46,6 +47,14 @@ public final class ForwardAxisEstimator {
 	private long windowStartNs;
 	private float windowStartSpeed;
 	private boolean hasWindow;
+
+	public ForwardAxisEstimator() {
+		this(DEFAULT_MIN_COHERENCE);
+	}
+
+	public ForwardAxisEstimator(float minCoherence) {
+		this.minCoherence = minCoherence;
+	}
 
 	/**
 	 * @param horizontalAccel device-frame linear acceleration with its gravity component removed
@@ -100,6 +109,24 @@ public final class ForwardAxisEstimator {
 		Vec3.copy(forward, dst);
 	}
 
+	/**
+	 * Starts out trusting a forward axis learned on an earlier run; later windows refine or, if the
+	 * phone was mounted differently, replace it.
+	 */
+	public void restore(float[] forwardUnit) {
+		reset();
+		if (!Vec3.normalize(forwardUnit, forward)) {
+			return;
+		}
+		for (int i = 0; i < 3; i++) {
+			accumulator[i] = forward[i] * MIN_WEIGHT;
+		}
+		weight = MIN_WEIGHT;
+		normalizer = MIN_WEIGHT;
+		coherence = 1f;
+		trusted = true;
+	}
+
 	public void reset() {
 		Vec3.zero(integral);
 		Vec3.zero(accumulator);
@@ -137,7 +164,7 @@ public final class ForwardAxisEstimator {
 	private void recompute() {
 		float magnitude = Vec3.norm(accumulator);
 		coherence = normalizer > 0f ? magnitude / normalizer : 0f;
-		boolean ok = weight >= MIN_WEIGHT && coherence >= MIN_COHERENCE && magnitude > 0f;
+		boolean ok = weight >= MIN_WEIGHT && coherence >= minCoherence && magnitude > 0f;
 		if (ok) {
 			Vec3.normalize(accumulator, forward);
 		}

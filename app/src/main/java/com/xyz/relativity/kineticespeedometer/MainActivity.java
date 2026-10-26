@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	/** Odometer in metres stored as the raw bits of a double; the float key before it lost metres past 10,000 km. */
 	private static final String PREF_ODOMETER_METERS_BITS = "odometer_meters_bits";
 	private static final String PREF_ODOMETER_LEGACY_FLOAT = "odometer";
+	/** Learned vehicle forward axis in the device frame, three floats, so a new run starts with it. */
+	private static final String PREF_FORWARD_AXIS_PREFIX = "forward_axis_";
 	private static final String PREF_CHART_WINDOW_INDEX = "chart_window_index";
 
 	private static final String ODOMETER_FORMAT = "%011.2f km";
@@ -118,6 +120,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	private Sensor linearAccelerationSensor;
 	private Sensor gravitySensor;
 	private Sensor rawAccelerometerSensor;
+	private Sensor gyroscopeSensor;
 	private final float[] gravity = new float[3];
 	private final float[] linearAcceleration = new float[3];
 	private boolean hasGravity = false;
@@ -235,6 +238,13 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	protected void onStart() {
 		super.onStart();
+		if (settings.contains(PREF_FORWARD_AXIS_PREFIX + 0) && !estimator.isForwardAxisKnown()) {
+			float[] axis = new float[3];
+			for (int i = 0; i < 3; i++) {
+				axis[i] = settings.getFloat(PREF_FORWARD_AXIS_PREFIX + i, 0f);
+			}
+			estimator.restoreForwardAxis(axis);
+		}
 		if (settings.contains(PREF_ODOMETER_METERS_BITS)) {
 			odometerMeters = Double.longBitsToDouble(settings.getLong(PREF_ODOMETER_METERS_BITS, 0L));
 		} else if (settings.contains(PREF_ODOMETER_LEGACY_FLOAT)) {
@@ -253,6 +263,7 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 		if (linearAccelerationSensor == null || gravitySensor == null) {
 			rawAccelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 		}
+		gyroscopeSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
 		settings = getSharedPreferences(PREFS_NAME, 0);
 
@@ -472,6 +483,10 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 				hasGravity = true;
 				recorder.recordGravity(event.timestamp, gravity);
 				break;
+			case Sensor.TYPE_GYROSCOPE:
+				recorder.recordGyroscope(event.timestamp, event.values);
+				estimator.onGyroSample(event.timestamp, event.values);
+				break;
 			case Sensor.TYPE_LINEAR_ACCELERATION:
 				recorder.recordLinearAcceleration(event.timestamp, event.values);
 				if (hasGravity) {
@@ -502,6 +517,9 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 
 	private void registerSensors() {
 		hasGravity = false;
+		if (gyroscopeSensor != null) {
+			sensorManager.registerListener(this, gyroscopeSensor, SensorManager.SENSOR_DELAY_GAME);
+		}
 		if (rawAccelerometerSensor != null) {
 			sensorManager.registerListener(this, rawAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
 			return;
@@ -730,7 +748,14 @@ public class MainActivity extends AppCompatActivity implements ILocationListener
 	@Override
 	protected void onPause() {
 		odometerMeters += estimator.drainDistanceMeters();
-		settings.edit()
+		SharedPreferences.Editor editor = settings.edit();
+		float[] axis = new float[3];
+		if (estimator.copyForwardAxis(axis)) {
+			for (int i = 0; i < 3; i++) {
+				editor.putFloat(PREF_FORWARD_AXIS_PREFIX + i, axis[i]);
+			}
+		}
+		editor
 				.putLong(PREF_ODOMETER_METERS_BITS, Double.doubleToRawLongBits(odometerMeters))
 				.remove(PREF_ODOMETER_LEGACY_FLOAT)
 				.apply();

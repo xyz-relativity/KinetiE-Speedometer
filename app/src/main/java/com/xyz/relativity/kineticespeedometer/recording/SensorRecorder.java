@@ -21,7 +21,8 @@ import java.util.concurrent.TimeoutException;
  * recording, so real drives can be replayed through the estimator offline.
  *
  * <p>Format: a header line {@value #HEADER}, then one row per event in arrival order. Row types:
- * {@code lin} (linear acceleration x, y, z), {@code grav} (gravity x, y, z) and {@code gps}
+ * {@code lin} (linear acceleration x, y, z), {@code grav} (gravity x, y, z), {@code gyro}
+ * (angular rate x, y, z in rad/s) and {@code gps}
  * (speed m/s, speed accuracy m/s, position accuracy m; NaN where the fix had no value).
  * Timestamps are elapsed-realtime nanoseconds exactly as the estimator receives them. Rows are
  * written in arrival order on purpose: a fix arrives later than its own timestamp, and a replay
@@ -35,6 +36,7 @@ public final class SensorRecorder {
 	public static final String TYPE_LINEAR_ACCELERATION = "lin";
 	public static final String TYPE_GRAVITY = "grav";
 	public static final String TYPE_GPS = "gps";
+	public static final String TYPE_GYROSCOPE = "gyro";
 	private static final int FLUSH_THRESHOLD_CHARS = 16 * 1024;
 
 	private final File directory;
@@ -168,6 +170,10 @@ public final class SensorRecorder {
 
 	public void recordGravity(long timestampNs, float[] xyz) {
 		append(TYPE_GRAVITY, timestampNs, xyz[0], xyz[1], xyz[2]);
+	}
+
+	public void recordGyroscope(long timestampNs, float[] xyz) {
+		append(TYPE_GYROSCOPE, timestampNs, xyz[0], xyz[1], xyz[2]);
 	}
 
 	/** Pass NaN for any value the fix did not report. */

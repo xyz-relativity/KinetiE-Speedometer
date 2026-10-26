@@ -179,6 +179,68 @@ public class SpeedEstimatorTest {
 		assertTrue(estimator.drainDistanceMeters() < 1.0);
 	}
 
+	/**
+	 * The car pitches nose-up by 6 degrees over 3 s (a hill) while cruising. Without a gyro the
+	 * tilted gravity leaks into the forward axis and the speed drifts; with the gyro the gravity
+	 * estimate follows the tilt and the speed holds.
+	 */
+	@Test
+	public void gyroKeepsGravityOnHills() {
+		float driftWithout = hillDrift(false);
+		float driftWith = hillDrift(true);
+		assertTrue("without gyro " + driftWithout, driftWithout > 1.0f);
+		assertTrue("with gyro " + driftWith, driftWith < 0.3f);
+	}
+
+	private static float hillDrift(boolean useGyro) {
+		// The simulated GPS has no latency, so the estimator must not assume any.
+		SpeedEstimator.Tuning tuning = new SpeedEstimator.Tuning();
+		tuning.gpsExtraLatencySec = 0f;
+		SpeedEstimator estimator = new SpeedEstimator(tuning);
+		Random rnd = new Random(99);
+		// Phone flat: gravity along device z, forward along device y. Learn the axis first.
+		float[] forward = {0f, 1f, 0f};
+		float[] rateAxis = {1f, 0f, 0f}; // pitching about the lateral (device x) axis
+		float[] linear = new float[3];
+		float[] gravity = new float[3];
+		float[] rate = new float[3];
+		float pitch = 0f;
+		float speed = 0f;
+		long t = 0;
+		int samples = 0;
+		for (int i = 0; i < 80 * RATE; i++) {
+			t += STEP;
+			float tSec = t / 1e9f;
+			// accelerate to 15 m/s, brake to 6, accelerate back to 15, then cruise through the hill
+			float a = tSec < 10f ? 0f : tSec < 20f ? 1.5f : tSec < 30f ? 0f : tSec < 36f ? -1.5f : tSec < 42f ? 1.5f : 0f;
+			speed = Math.max(0f, speed + a * DT);
+			boolean hill = tSec >= 60f && tSec < 63f;
+			float pitchRate = hill ? (float) Math.toRadians(2.0) : 0f;
+			pitch += pitchRate * DT;
+			// gravity in the device frame tilts toward -y as the nose goes up
+			gravity[0] = 0f;
+			gravity[1] = -9.81f * (float) Math.sin(pitch);
+			gravity[2] = 9.81f * (float) Math.cos(pitch);
+			// the platform reports the true linear acceleration plus road vibration; the estimator sums both anyway
+			for (int k = 0; k < 3; k++) {
+				linear[k] = a * forward[k] + (float) rnd.nextGaussian() * 0.2f;
+			}
+			if (useGyro) {
+				rate[0] = -pitchRate * rateAxis[0];
+				rate[1] = 0f;
+				rate[2] = 0f;
+				estimator.onGyroSample(t, rate);
+			}
+			estimator.onSensorSample(t, linear, gravity);
+			if (i % RATE == RATE - 1 && tSec < 58f) {
+				estimator.onGpsSpeed(t, speed, 0.1f);
+			}
+			samples++;
+		}
+		// GPS was withheld from 58 s on; the car kept cruising at 'speed'
+		return Math.abs(estimator.getSpeedMps() - speed);
+	}
+
 	@Test
 	public void reportsModeFromGpsAge() {
 		SpeedEstimator estimator = new SpeedEstimator();
